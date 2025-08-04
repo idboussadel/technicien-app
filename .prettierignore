@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+build
+target
+
+# Configuration files
+*.config.js
+*.config.ts
+
+# Generated files
+src-tauri/target
+src-tauri/gen
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Logs
+*.log
