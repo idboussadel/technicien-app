@@ -75,8 +75,8 @@ impl DatabaseManager {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS personnel (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nom TEXT NOT NULL,
-                telephone TEXT NOT NULL,
+                nom TEXT NOT NULL UNIQUE,
+                telephone TEXT UNIQUE,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )",
             [],
@@ -87,7 +87,7 @@ impl DatabaseManager {
             "CREATE TABLE IF NOT EXISTS soins (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nom TEXT NOT NULL UNIQUE,
-                unite_defaut TEXT NOT NULL,
+                unit TEXT NOT NULL,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )",
             [],

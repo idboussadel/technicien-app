@@ -29,8 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import CreateSoinModal from "./create-soin-modal";
 import UpdateSoinModal from "./update-soin-modal";
 import { toast } from "react-hot-toast";
@@ -38,7 +36,7 @@ import { toast } from "react-hot-toast";
 interface Soin {
   id?: number;
   nom: string;
-  unite_defaut: string;
+  unit: string;
   created_at: string;
 }
 
@@ -206,7 +204,7 @@ export default function Medicaments() {
       sortable: false,
     },
     {
-      key: "unite_defaut" as keyof Soin,
+      key: "unit" as keyof Soin,
       header: "Unité par défaut",
       sortable: false,
     },

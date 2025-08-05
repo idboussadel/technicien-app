@@ -89,7 +89,7 @@ impl SoinRepository {
         
         if !valid_units.contains(&unite.to_lowercase().as_str()) {
             return Err(AppError::validation_error(
-                "unite_defaut",
+                "unit",
                 "Unité non reconnue. Unités valides: l, ml, kg, g, mg, dose, comprimé, ml/l, g/l"
             ));
         }
@@ -110,14 +110,14 @@ impl SoinRepositoryTrait for SoinRepository {
             ));
         }
 
-        if soin.unite_defaut.trim().is_empty() {
+        if soin.unit.trim().is_empty() {
             return Err(AppError::validation_error(
-                "unite_defaut", 
+                "unit", 
                 "L'unité par défaut ne peut pas être vide"
             ));
         }
 
-        self.validate_unit(&soin.unite_defaut)?;
+        self.validate_unit(&soin.unit)?;
 
         // Vérifier que le nom n'existe pas déjà
         let existing: Result<i64, _> = conn.query_row(
@@ -137,8 +137,8 @@ impl SoinRepositoryTrait for SoinRepository {
 
         // Insertion du nouveau soin
         conn.execute(
-            "INSERT INTO soins (nom, unite_defaut) VALUES (?1, ?2)",
-            [&soin.nom, &soin.unite_defaut],
+            "INSERT INTO soins (nom, unit) VALUES (?1, ?2)",
+            [&soin.nom, &soin.unit],
         )?;
 
         let id = conn.last_insert_rowid();
@@ -159,7 +159,7 @@ impl SoinRepositoryTrait for SoinRepository {
         Ok(Soin {
             id: Some(id),
             nom: soin.nom,
-            unite_defaut: soin.unite_defaut,
+            unit: soin.unit,
             created_at,
         })
     }
@@ -182,7 +182,7 @@ impl SoinRepositoryTrait for SoinRepository {
         if let Some(unite_term) = unite_search {
             let unite_trimmed = unite_term.trim();
             if !unite_trimmed.is_empty() {
-                conditions.push("unite_defaut LIKE ?");
+                conditions.push("unit LIKE ?");
                 search_params.push(format!("%{}%", unite_trimmed));
             }
         }
@@ -211,7 +211,7 @@ impl SoinRepositoryTrait for SoinRepository {
         
         // Get paginated data
         let data_query = format!(
-            "SELECT id, nom, unite_defaut, created_at FROM soins {} ORDER BY nom LIMIT ? OFFSET ?",
+            "SELECT id, nom, unit, created_at FROM soins {} ORDER BY nom LIMIT ? OFFSET ?",
             where_clause
         );
         
@@ -236,7 +236,7 @@ impl SoinRepositoryTrait for SoinRepository {
                 Ok(Soin {
                     id: Some(row.get(0)?),
                     nom: row.get(1)?,
-                    unite_defaut: row.get(2)?,
+                    unit: row.get(2)?,
                     created_at,
                 })
             }
@@ -256,7 +256,7 @@ impl SoinRepositoryTrait for SoinRepository {
     async fn get_by_id(&self, id: i64) -> AppResult<Soin> {
         let conn = self.db.get_connection()?;
         
-        let mut stmt = conn.prepare("SELECT id, nom, unite_defaut, created_at FROM soins WHERE id = ?1")?;
+        let mut stmt = conn.prepare("SELECT id, nom, unit, created_at FROM soins WHERE id = ?1")?;
         let soin = stmt.query_row([id], |row| {
             let created_at_str: String = row.get(3)?;
             
@@ -270,7 +270,7 @@ impl SoinRepositoryTrait for SoinRepository {
             Ok(Soin {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
-                unite_defaut: row.get(2)?,
+                unit: row.get(2)?,
                 created_at,
             })
         }).map_err(|e| {
@@ -294,14 +294,14 @@ impl SoinRepositoryTrait for SoinRepository {
             ));
         }
 
-        if soin.unite_defaut.trim().is_empty() {
+        if soin.unit.trim().is_empty() {
             return Err(AppError::validation_error(
-                "unite_defaut", 
+                "unitt", 
                 "L'unité par défaut ne peut pas être vide"
             ));
         }
 
-        self.validate_unit(&soin.unite_defaut)?;
+        self.validate_unit(&soin.unit)?;
 
         // Vérifier que le nom n'existe pas déjà pour un autre soin
         let existing: Result<i64, _> = conn.query_row(
@@ -321,8 +321,8 @@ impl SoinRepositoryTrait for SoinRepository {
 
         // Mise à jour du soin
         let rows_affected = conn.execute(
-            "UPDATE soins SET nom = ?1, unite_defaut = ?2 WHERE id = ?3",
-            [&soin.nom, &soin.unite_defaut, &soin.id.to_string()],
+            "UPDATE soins SET nom = ?1, unit = ?2 WHERE id = ?3",
+            [&soin.nom, &soin.unit, &soin.id.to_string()],
         )?;
 
         if rows_affected == 0 {
@@ -345,7 +345,7 @@ impl SoinRepositoryTrait for SoinRepository {
         Ok(Soin {
             id: Some(soin.id),
             nom: soin.nom,
-            unite_defaut: soin.unite_defaut,
+            unit: soin.unit,
             created_at,
         })
     }
@@ -384,7 +384,7 @@ impl SoinRepositoryTrait for SoinRepository {
         
         let search_pattern = format!("%{}%", nom);
         let mut stmt = conn.prepare(
-            "SELECT id, nom, unite_defaut, created_at FROM soins WHERE nom LIKE ?1 ORDER BY nom"
+            "SELECT id, nom, unit, created_at FROM soins WHERE nom LIKE ?1 ORDER BY nom"
         )?;
         
         let soins = stmt.query_map([search_pattern], |row| {
@@ -400,7 +400,7 @@ impl SoinRepositoryTrait for SoinRepository {
             Ok(Soin {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
-                unite_defaut: row.get(2)?,
+                unit: row.get(2)?,
                 created_at,
             })
         })?
@@ -413,10 +413,10 @@ impl SoinRepositoryTrait for SoinRepository {
         let conn = self.db.get_connection()?;
         
         let mut stmt = conn.prepare(
-            "SELECT s.id, s.nom, s.unite_defaut, s.created_at, COUNT(sq.soins_id) as usage_count
+            "SELECT s.id, s.nom, s.unit, s.created_at, COUNT(sq.soins_id) as usage_count
              FROM soins s
              LEFT JOIN suivi_quotidien sq ON s.id = sq.soins_id
-             GROUP BY s.id, s.nom, s.unite_defaut, s.created_at
+             GROUP BY s.id, s.nom, s.unit, s.created_at
              ORDER BY usage_count DESC, s.nom
              LIMIT ?1"
         )?;
@@ -434,7 +434,7 @@ impl SoinRepositoryTrait for SoinRepository {
             Ok(Soin {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
-                unite_defaut: row.get(2)?,
+                unit: row.get(2)?,
                 created_at,
             })
         })?

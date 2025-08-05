@@ -299,8 +299,8 @@ export default function Header({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="focus:outline-none">
-                    <Avatar className="w-8 h-8 ring-2 ring-border hover:ring-ring transition-all cursor-pointer">
-                      <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-sm font-medium">
+                    <Avatar className="w-8 h-8 hover:ring-2 ring-border hover:ring-ring transition-all cursor-pointer">
+                      <AvatarFallback className="bg-orange-100 border border-orange-600 text-orange-600 text-sm font-medium">
                         T
                       </AvatarFallback>
                     </Avatar>
@@ -309,8 +309,8 @@ export default function Header({
                 <DropdownMenuContent align="end" className="w-64 p-0">
                   <div className="p-4 border-b border-border">
                     <div className="flex items-center space-x-3">
-                      <Avatar className="w-10 h-10">
-                        <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white font-medium">
+                      <Avatar className="w-10 h-10  ">
+                        <AvatarFallback className="bg-orange-100 border border-orange-600 text-orange-600 text-sm font-medium">
                           T
                         </AvatarFallback>
                       </Avatar>

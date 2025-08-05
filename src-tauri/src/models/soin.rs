@@ -9,7 +9,7 @@ use chrono::{DateTime, Utc};
 pub struct Soin {
     pub id: Option<i64>,
     pub nom: String,
-    pub unite_defaut: String, // Unité par défaut (l, kg, etc.)
+    pub unit: String, // Unité par défaut (l, kg, etc.)
     pub created_at: DateTime<Utc>,
 }
 
@@ -20,7 +20,7 @@ pub struct Soin {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSoin {
     pub nom: String,
-    pub unite_defaut: String,
+    pub unit: String,
 }
 
 /// Structure pour mettre à jour un soin existant
@@ -31,7 +31,7 @@ pub struct CreateSoin {
 pub struct UpdateSoin {
     pub id: i64,
     pub nom: String,
-    pub unite_defaut: String,
+    pub unit: String,
 }
 
 /// Structure pour les résultats paginés des soins

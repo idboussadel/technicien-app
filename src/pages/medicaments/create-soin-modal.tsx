@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 
 interface CreateSoin {
   nom: string;
-  unite_defaut: string;
+  unite: string;
 }
 
 interface CreateSoinModalProps {
@@ -42,7 +42,7 @@ const soinSchema = z.object({
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères")
     .trim(),
-  unite_defaut: z
+  unit: z
     .string()
     .min(1, "L'unité est obligatoire")
     .max(20, "L'unité ne peut pas dépasser 20 caractères")
@@ -63,7 +63,7 @@ const CreateSoinModal = ({
     resolver: zodResolver(soinSchema),
     defaultValues: {
       nom: "",
-      unite_defaut: "",
+      unit: "",
     },
   });
 
@@ -77,7 +77,7 @@ const CreateSoinModal = ({
       // Create new soin
       const createData: CreateSoin = {
         nom: data.nom,
-        unite_defaut: data.unite_defaut,
+        unite: data.unit,
       };
 
       await invoke("create_soin", { soin: createData });
@@ -119,7 +119,9 @@ const CreateSoinModal = ({
               name="nom"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nom</FormLabel>
+                  <FormLabel>
+                    Nom <span className="text-red-600">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="Entrez le nom" {...field} disabled={isSubmitting} />
                   </FormControl>
@@ -130,10 +132,12 @@ const CreateSoinModal = ({
 
             <FormField
               control={form.control}
-              name="unite_defaut"
+              name="unit"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Unité par défaut</FormLabel>
+                  <FormLabel>
+                    Unité <span className="text-red-600">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Entrez l'unité (ml, mg, etc.)"

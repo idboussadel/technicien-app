@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 
 interface CreatePersonnel {
   nom: string;
-  telephone: string;
+  telephone?: string;
 }
 
 interface CreatePersonnelModalProps {
@@ -44,9 +44,12 @@ const personnelSchema = z.object({
     .trim(),
   telephone: z
     .string()
-    .min(10, "Le numéro de téléphone doit contenir au moins 10 chiffres")
-    .max(15, "Le numéro de téléphone ne peut pas dépasser 15 chiffres")
-    .regex(/^[\d\s\-\+\(\)]+$/, "Format de téléphone invalide"),
+    .optional()
+    .transform((val) => val?.trim() || "")
+    .refine(
+      (val) => !val || val.replace(/\D/g, "").length === 10,
+      "Le numéro de téléphone doit contenir exactement 10 chiffres"
+    ),
 });
 
 type PersonnelForm = z.infer<typeof personnelSchema>;
@@ -77,7 +80,7 @@ const CreatePersonnelModal = ({
       // Create new personnel
       const createData: CreatePersonnel = {
         nom: data.nom,
-        telephone: data.telephone,
+        telephone: data.telephone || "",
       };
 
       await invoke("create_personnel", { personnel: createData });
@@ -119,7 +122,9 @@ const CreatePersonnelModal = ({
               name="nom"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nom</FormLabel>
+                  <FormLabel>
+                    Nom <span className="text-red-600">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input placeholder="Entrez le nom" {...field} disabled={isSubmitting} />
                   </FormControl>

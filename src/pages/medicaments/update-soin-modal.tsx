@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 interface Soin {
   id?: number;
   nom: string;
-  unite_defaut: string;
+  unit: string;
 }
 
 interface UpdateSoinModalProps {
@@ -44,7 +44,7 @@ const soinSchema = z.object({
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères")
     .trim(),
-  unite_defaut: z
+  unit: z
     .string()
     .min(1, "L'unité est obligatoire")
     .max(20, "L'unité ne peut pas dépasser 20 caractères")
@@ -66,7 +66,7 @@ export default function UpdateSoinModal({
     resolver: zodResolver(soinSchema),
     defaultValues: {
       nom: soin?.nom || "",
-      unite_defaut: soin?.unite_defaut || "",
+      unit: soin?.unit || "",
     },
   });
 
@@ -75,7 +75,7 @@ export default function UpdateSoinModal({
     if (soin) {
       form.reset({
         nom: soin.nom,
-        unite_defaut: soin.unite_defaut,
+        unit: soin.unit,
       });
     }
   }, [soin, form]);
@@ -146,7 +146,7 @@ export default function UpdateSoinModal({
 
             <FormField
               control={form.control}
-              name="unite_defaut"
+              name="unit"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unité par défaut</FormLabel>
