@@ -55,6 +55,12 @@ pub fn run() {
             commands::get_all_personnel,
             commands::update_personnel,
             commands::delete_personnel,
+            // Soin commands
+            commands::create_soin,
+            commands::get_all_soins,
+            commands::get_soin_by_id,
+            commands::update_soin,
+            commands::delete_soin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

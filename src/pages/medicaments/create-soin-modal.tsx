@@ -23,69 +23,69 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-interface CreatePersonnel {
+interface CreateSoin {
   nom: string;
-  telephone: string;
+  unite_defaut: string;
 }
 
-interface CreatePersonnelModalProps {
+interface CreateSoinModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPersonnelCreated: () => void;
+  onSoinCreated: () => void;
 }
 
 // Form validation schema
-const personnelSchema = z.object({
+const soinSchema = z.object({
   nom: z
     .string()
     .min(1, "Le nom est obligatoire")
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères")
     .trim(),
-  telephone: z
+  unite_defaut: z
     .string()
-    .min(10, "Le numéro de téléphone doit contenir au moins 10 chiffres")
-    .max(15, "Le numéro de téléphone ne peut pas dépasser 15 chiffres")
-    .regex(/^[\d\s\-\+\(\)]+$/, "Format de téléphone invalide"),
+    .min(1, "L'unité est obligatoire")
+    .max(20, "L'unité ne peut pas dépasser 20 caractères")
+    .trim(),
 });
 
-type PersonnelForm = z.infer<typeof personnelSchema>;
+type SoinForm = z.infer<typeof soinSchema>;
 
-const CreatePersonnelModal = ({
+const CreateSoinModal = ({
   open,
   onOpenChange,
-  onPersonnelCreated,
-}: CreatePersonnelModalProps): JSX.Element => {
+  onSoinCreated,
+}: CreateSoinModalProps): JSX.Element => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form setup with validation
-  const form = useForm<PersonnelForm>({
-    resolver: zodResolver(personnelSchema),
+  const form = useForm<SoinForm>({
+    resolver: zodResolver(soinSchema),
     defaultValues: {
       nom: "",
-      telephone: "",
+      unite_defaut: "",
     },
   });
 
   /**
-   * Handles form submission for creating personnel
+   * Handles form submission for creating soin
    */
-  const onSubmit = async (data: PersonnelForm) => {
+  const onSubmit = async (data: SoinForm) => {
     try {
       setIsSubmitting(true);
 
-      // Create new personnel
-      const createData: CreatePersonnel = {
+      // Create new soin
+      const createData: CreateSoin = {
         nom: data.nom,
-        telephone: data.telephone,
+        unite_defaut: data.unite_defaut,
       };
 
-      await invoke("create_personnel", { personnel: createData });
+      await invoke("create_soin", { soin: createData });
       toast.success(`${data.nom} a été ajouté avec succès`);
 
       form.reset();
       onOpenChange(false);
-      onPersonnelCreated();
+      onSoinCreated();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error : "Une erreur est survenue";
       toast.error(errorMessage);
@@ -106,9 +106,9 @@ const CreatePersonnelModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Ajouter du personnel</DialogTitle>
+          <DialogTitle>Ajouter un médicament</DialogTitle>
           <DialogDescription>
-            Remplissez les informations du nouveau personnel ci-dessous.
+            Remplissez les informations du nouveau médicament ci-dessous.
           </DialogDescription>
         </DialogHeader>
 
@@ -130,13 +130,13 @@ const CreatePersonnelModal = ({
 
             <FormField
               control={form.control}
-              name="telephone"
+              name="unite_defaut"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Téléphone</FormLabel>
+                  <FormLabel>Unité par défaut</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Entrez le numéro de téléphone"
+                      placeholder="Entrez l'unité (ml, mg, etc.)"
                       {...field}
                       disabled={isSubmitting}
                       autoComplete="off"
@@ -162,4 +162,4 @@ const CreatePersonnelModal = ({
   );
 };
 
-export default CreatePersonnelModal;
+export default CreateSoinModal;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,69 +23,87 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-interface CreatePersonnel {
+interface Soin {
+  id?: number;
   nom: string;
-  telephone: string;
+  unite_defaut: string;
 }
 
-interface CreatePersonnelModalProps {
+interface UpdateSoinModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPersonnelCreated: () => void;
+  onSoinUpdated: () => void;
+  soin: Soin | null;
 }
 
 // Form validation schema
-const personnelSchema = z.object({
+const soinSchema = z.object({
   nom: z
     .string()
     .min(1, "Le nom est obligatoire")
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères")
     .trim(),
-  telephone: z
+  unite_defaut: z
     .string()
-    .min(10, "Le numéro de téléphone doit contenir au moins 10 chiffres")
-    .max(15, "Le numéro de téléphone ne peut pas dépasser 15 chiffres")
-    .regex(/^[\d\s\-\+\(\)]+$/, "Format de téléphone invalide"),
+    .min(1, "L'unité est obligatoire")
+    .max(20, "L'unité ne peut pas dépasser 20 caractères")
+    .trim(),
 });
 
-type PersonnelForm = z.infer<typeof personnelSchema>;
+type SoinForm = z.infer<typeof soinSchema>;
 
-const CreatePersonnelModal = ({
+export default function UpdateSoinModal({
   open,
   onOpenChange,
-  onPersonnelCreated,
-}: CreatePersonnelModalProps): JSX.Element => {
+  onSoinUpdated,
+  soin,
+}: UpdateSoinModalProps): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form setup with validation
-  const form = useForm<PersonnelForm>({
-    resolver: zodResolver(personnelSchema),
+  const form = useForm<SoinForm>({
+    resolver: zodResolver(soinSchema),
     defaultValues: {
-      nom: "",
-      telephone: "",
+      nom: soin?.nom || "",
+      unite_defaut: soin?.unite_defaut || "",
     },
   });
 
+  // Reset form when soin changes
+  useEffect(() => {
+    if (soin) {
+      form.reset({
+        nom: soin.nom,
+        unite_defaut: soin.unite_defaut,
+      });
+    }
+  }, [soin, form]);
+
   /**
-   * Handles form submission for creating personnel
+   * Handles form submission for updating soin
    */
-  const onSubmit = async (data: PersonnelForm) => {
+  const onSubmit = async (data: SoinForm) => {
+    if (!soin) {
+      toast.error("Aucun médicament à modifier");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      // Create new personnel
-      const createData: CreatePersonnel = {
-        nom: data.nom,
-        telephone: data.telephone,
-      };
+      // Update existing soin
+      await invoke("update_soin", {
+        soin: {
+          id: soin.id,
+          ...data,
+        },
+      });
 
-      await invoke("create_personnel", { personnel: createData });
-      toast.success(`${data.nom} a été ajouté avec succès`);
-
+      toast.success(`${data.nom} a été modifié avec succès`);
       form.reset();
       onOpenChange(false);
-      onPersonnelCreated();
+      onSoinUpdated();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error : "Une erreur est survenue";
       toast.error(errorMessage);
@@ -106,10 +124,8 @@ const CreatePersonnelModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Ajouter du personnel</DialogTitle>
-          <DialogDescription>
-            Remplissez les informations du nouveau personnel ci-dessous.
-          </DialogDescription>
+          <DialogTitle>Modifier le médicament</DialogTitle>
+          <DialogDescription>Modifiez les informations du médicament ci-dessous.</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -130,13 +146,13 @@ const CreatePersonnelModal = ({
 
             <FormField
               control={form.control}
-              name="telephone"
+              name="unite_defaut"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Téléphone</FormLabel>
+                  <FormLabel>Unité par défaut</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Entrez le numéro de téléphone"
+                      placeholder="Entrez l'unité (ml, mg, etc.)"
                       {...field}
                       disabled={isSubmitting}
                       autoComplete="off"
@@ -152,7 +168,7 @@ const CreatePersonnelModal = ({
                 Annuler
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "En cours..." : "Ajouter"}
+                {isSubmitting ? "En cours..." : "Modifier"}
               </Button>
             </DialogFooter>
           </form>
@@ -160,6 +176,4 @@ const CreatePersonnelModal = ({
       </DialogContent>
     </Dialog>
   );
-};
-
-export default CreatePersonnelModal;
+}

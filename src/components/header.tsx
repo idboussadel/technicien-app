@@ -48,6 +48,7 @@ export default function Header({
   onSignOut,
 }: HeaderProps) {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
+  const [isMaximized, setIsMaximized] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const handleNewFerme = () => {
@@ -65,13 +66,26 @@ export default function Header({
 
   const handleMaximize = async () => {
     const window = getCurrentWindow();
+    const isCurrentlyMaximized = await window.isMaximized();
     await window.toggleMaximize();
+    setIsMaximized(!isCurrentlyMaximized);
   };
 
   const handleClose = async () => {
     const window = getCurrentWindow();
     await window.close();
   };
+
+  // Check if window is maximized on component mount
+  useEffect(() => {
+    const checkMaximized = async () => {
+      const window = getCurrentWindow();
+      const maximized = await window.isMaximized();
+      setIsMaximized(maximized);
+    };
+
+    checkMaximized();
+  }, []);
 
   // Update indicator position when route changes
   useEffect(() => {
@@ -104,7 +118,7 @@ export default function Header({
   return (
     <div className="fixed top-0 left-0 right-0 bg-background backdrop-blur-sm z-50">
       {/* Top Header Bar */}
-      <div className="h-13" data-tauri-drag-region>
+      <div className="h-10 mt-2" data-tauri-drag-region>
         <div className="flex items-center justify-between h-full" data-tauri-drag-region>
           <div className="flex items-center space-x-4 pl-6" data-tauri-drag-region={false}>
             {/* Logo */}
@@ -168,36 +182,65 @@ export default function Header({
             )}
           </div>
 
-          {/* Window Controls */}
-          <div className="flex h-full" data-tauri-drag-region={false}>
+          {/* Window Controls - Absolute positioned at top right */}
+          <div className="absolute top-0 right-0 flex h-11" data-tauri-drag-region={false}>
+            {/* Minimize Button */}
             <button
               onClick={handleMinimize}
-              className="w-12 h-full flex items-center justify-center hover:bg-muted/50 transition-colors"
+              className="w-12 h-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors group"
+              aria-label="Minimize"
             >
               <svg className="w-3 h-3" viewBox="0 0 12 12" fill="currentColor">
-                <rect x="3" y="5.5" width="6" height="1" />
+                <rect x="0" y="5.5" width="12" height="1" rx="0.5" />
               </svg>
             </button>
+
+            {/* Maximize/Restore Button */}
             <button
               onClick={handleMaximize}
-              className="w-12 h-full flex items-center justify-center hover:bg-muted/50 transition-colors"
+              className="w-12 h-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors group"
+              aria-label={isMaximized ? "Restore" : "Maximize"}
+            >
+              {isMaximized ? (
+                <svg
+                  className="w-3 h-3"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                >
+                  <rect x="1.5" y="3.5" width="7" height="7" rx="1" />
+                  <path d="M3 3.5V2.5C3 1.67 3.67 1 4.5 1H10C10.83 1 11.5 1.67 11.5 2.5V8C11.5 8.83 10.83 9.5 10 9.5H8.5" />
+                </svg>
+              ) : (
+                <svg
+                  className="w-3 h-3"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                >
+                  <rect x="1" y="1" width="10" height="10" rx="1" />
+                </svg>
+              )}
+            </button>
+
+            {/* Close Button */}
+            <button
+              onClick={handleClose}
+              className="w-12 h-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors group"
+              aria-label="Close"
             >
               <svg
                 className="w-3 h-3"
                 viewBox="0 0 12 12"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1"
+                strokeWidth="1.5"
+                strokeLinecap="round"
               >
-                <rect x="2.5" y="2.5" width="7" height="7" />
-              </svg>
-            </button>
-            <button
-              onClick={handleClose}
-              className="w-12 h-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"
-            >
-              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="currentColor">
-                <path d="M6.707 6l2.647-2.646a.5.5 0 0 0-.708-.708L6 5.293 3.354 2.646a.5.5 0 1 0-.708.708L5.293 6 2.646 8.646a.5.5 0 1 0 .708.708L6 6.707l2.646 2.647a.5.5 0 0 0 .708-.708L6.707 6z" />
+                <path d="M2 2L10 10" />
+                <path d="M10 2L2 10" />
               </svg>
             </button>
           </div>

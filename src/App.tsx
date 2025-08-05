@@ -107,7 +107,7 @@ function App() {
         onSignOut={handleSignOut}
       />
 
-      <main className="mt-[104px] h-[calc(100vh-104px)] overflow-auto">
+      <main className="mt-[100px] h-[calc(100vh-102px)] overflow-auto">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route

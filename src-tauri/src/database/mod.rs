@@ -87,7 +87,8 @@ impl DatabaseManager {
             "CREATE TABLE IF NOT EXISTS soins (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nom TEXT NOT NULL UNIQUE,
-                unite_defaut TEXT NOT NULL
+                unite_defaut TEXT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )",
             [],
         )?;

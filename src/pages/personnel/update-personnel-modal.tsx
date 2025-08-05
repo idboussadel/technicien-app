@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,15 +23,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-interface CreatePersonnel {
+interface Personnel {
+  id?: number;
   nom: string;
   telephone: string;
 }
 
-interface CreatePersonnelModalProps {
+interface UpdatePersonnelModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPersonnelCreated: () => void;
+  onPersonnelUpdated: () => void;
+  personnel: Personnel | null;
 }
 
 // Form validation schema
@@ -51,41 +53,57 @@ const personnelSchema = z.object({
 
 type PersonnelForm = z.infer<typeof personnelSchema>;
 
-const CreatePersonnelModal = ({
+export default function UpdatePersonnelModal({
   open,
   onOpenChange,
-  onPersonnelCreated,
-}: CreatePersonnelModalProps): JSX.Element => {
+  onPersonnelUpdated,
+  personnel,
+}: UpdatePersonnelModalProps): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form setup with validation
   const form = useForm<PersonnelForm>({
     resolver: zodResolver(personnelSchema),
     defaultValues: {
-      nom: "",
-      telephone: "",
+      nom: personnel?.nom || "",
+      telephone: personnel?.telephone || "",
     },
   });
 
+  // Reset form when personnel changes
+  useEffect(() => {
+    if (personnel) {
+      form.reset({
+        nom: personnel.nom,
+        telephone: personnel.telephone,
+      });
+    }
+  }, [personnel, form]);
+
   /**
-   * Handles form submission for creating personnel
+   * Handles form submission for updating personnel
    */
   const onSubmit = async (data: PersonnelForm) => {
+    if (!personnel) {
+      toast.error("Aucun personnel à modifier");
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
-      // Create new personnel
-      const createData: CreatePersonnel = {
-        nom: data.nom,
-        telephone: data.telephone,
-      };
+      // Update existing personnel
+      await invoke("update_personnel", {
+        personnel: {
+          id: personnel.id,
+          ...data,
+        },
+      });
 
-      await invoke("create_personnel", { personnel: createData });
-      toast.success(`${data.nom} a été ajouté avec succès`);
-
+      toast.success(`${data.nom} a été modifié avec succès`);
       form.reset();
       onOpenChange(false);
-      onPersonnelCreated();
+      onPersonnelUpdated();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error : "Une erreur est survenue";
       toast.error(errorMessage);
@@ -106,10 +124,8 @@ const CreatePersonnelModal = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Ajouter du personnel</DialogTitle>
-          <DialogDescription>
-            Remplissez les informations du nouveau personnel ci-dessous.
-          </DialogDescription>
+          <DialogTitle>Modifier le personnel</DialogTitle>
+          <DialogDescription>Modifiez les informations du personnel ci-dessous.</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -152,7 +168,7 @@ const CreatePersonnelModal = ({
                 Annuler
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "En cours..." : "Ajouter"}
+                {isSubmitting ? "En cours..." : "Modifier"}
               </Button>
             </DialogFooter>
           </form>
@@ -160,6 +176,4 @@ const CreatePersonnelModal = ({
       </DialogContent>
     </Dialog>
   );
-};
-
-export default CreatePersonnelModal;
+}

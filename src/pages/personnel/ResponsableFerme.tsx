@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import CreatePersonnelModal from "@/pages/personnel/create-personnel-modal";
+import UpdatePersonnelModal from "@/pages/personnel/update-personnel-modal";
 import { toast } from "react-hot-toast";
 
 interface Personnel {
@@ -51,7 +52,8 @@ export default function ResponsableFerme() {
     has_prev: false,
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [editingPersonnel, setEditingPersonnel] = useState<Personnel | null>(null);
   const [deletingPersonnel, setDeletingPersonnel] = useState<Personnel | null>(null);
   const [nomSearch, setNomSearch] = useState("");
@@ -106,9 +108,16 @@ export default function ResponsableFerme() {
   };
 
   /**
-   * Handle personnel creation/update
+   * Handle personnel creation
    */
   const handlePersonnelCreated = () => {
+    loadPersonnel(pagination.page, nomSearch, teleSearch);
+  };
+
+  /**
+   * Handle personnel update
+   */
+  const handlePersonnelUpdated = () => {
     loadPersonnel(pagination.page, nomSearch, teleSearch);
     setEditingPersonnel(null);
   };
@@ -118,7 +127,7 @@ export default function ResponsableFerme() {
    */
   const handleEdit = (person: Personnel) => {
     setEditingPersonnel(person);
-    setIsModalOpen(true);
+    setIsUpdateModalOpen(true);
   };
 
   /**
@@ -211,7 +220,7 @@ export default function ResponsableFerme() {
     <div className="p-6 space-y-6 min-h-screen bg-gray-50">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Gestion du Personnel</h1>
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2">
+        <Button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2">
           <Plus className="h-4 w-4" />
           Ajouter Personnel
         </Button>
@@ -287,10 +296,16 @@ export default function ResponsableFerme() {
       />
 
       <CreatePersonnelModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
         onPersonnelCreated={handlePersonnelCreated}
-        editingPersonnel={editingPersonnel}
+      />
+
+      <UpdatePersonnelModal
+        open={isUpdateModalOpen}
+        onOpenChange={setIsUpdateModalOpen}
+        onPersonnelUpdated={handlePersonnelUpdated}
+        personnel={editingPersonnel}
       />
 
       <AlertDialog open={!!deletingPersonnel} onOpenChange={() => setDeletingPersonnel(null)}>

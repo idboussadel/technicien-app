@@ -1,7 +1,8 @@
 use crate::database::DatabaseManager;
 use crate::error::{AppError, AppResult};
-use crate::models::{Soin, CreateSoin, UpdateSoin};
+use crate::models::{Soin, CreateSoin, UpdateSoin, PaginatedSoin};
 use std::sync::Arc;
+use chrono::{DateTime, Utc};
 
 /// Trait pour les opérations sur les soins
 /// 
@@ -16,13 +17,10 @@ pub trait SoinRepositoryTrait: Send + Sync {
     /// # Returns
     /// Le soin créé avec son ID généré
     async fn create(&self, soin: CreateSoin) -> AppResult<Soin>;
-
-    /// Récupère tous les soins
-    /// 
-    /// # Returns
-    /// Une liste de tous les soins dans le système
-    async fn get_all(&self) -> AppResult<Vec<Soin>>;
-
+    
+    /// Get all soins with pagination and search
+    async fn get_all(&self, page: u32, per_page: u32, nom_search: Option<&str>, unite_search: Option<&str>) -> AppResult<PaginatedSoin>;
+    
     /// Récupère un soin par son ID
     /// 
     /// # Arguments
@@ -49,7 +47,7 @@ pub trait SoinRepositoryTrait: Send + Sync {
     /// # Returns
     /// Un résultat indiquant le succès ou l'échec
     async fn delete(&self, id: i64) -> AppResult<()>;
-
+    
     /// Recherche des soins par nom (partiel)
     /// 
     /// # Arguments
@@ -69,23 +67,16 @@ pub trait SoinRepositoryTrait: Send + Sync {
     async fn get_most_used(&self, limit: i32) -> AppResult<Vec<Soin>>;
 }
 
-/// Implémentation du repository pour les soins
-/// 
-/// Utilise SQLite avec un pool de connexions pour
-/// optimiser les performances et éviter les conflits.
+/// Repository implementation for soins
 pub struct SoinRepository {
     db: Arc<DatabaseManager>,
 }
 
 impl SoinRepository {
-    /// Crée une nouvelle instance du repository
-    /// 
-    /// # Arguments
-    /// * `db` - Le gestionnaire de base de données partagé
     pub fn new(db: Arc<DatabaseManager>) -> Self {
         Self { db }
     }
-
+    
     /// Valide une unité de mesure
     /// 
     /// # Arguments
@@ -152,46 +143,143 @@ impl SoinRepositoryTrait for SoinRepository {
 
         let id = conn.last_insert_rowid();
 
+        // Get the created_at timestamp from the database
+        let mut stmt = conn.prepare("SELECT created_at FROM soins WHERE id = ?1")?;
+        let created_at: String = stmt.query_row([id], |row| {
+            Ok(row.get(0)?)
+        })?;
+
+        // Parse the timestamp using NaiveDateTime first, then convert to UTC
+        let naive_dt = chrono::NaiveDateTime::parse_from_str(&created_at, "%Y-%m-%d %H:%M:%S")
+            .map_err(|e| {
+                AppError::validation_error("created_at", &format!("Failed to parse date '{}': {}", created_at, e))
+            })?;
+        let created_at = DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc);
+
         Ok(Soin {
             id: Some(id),
             nom: soin.nom,
             unite_defaut: soin.unite_defaut,
+            created_at,
         })
     }
 
-    async fn get_all(&self) -> AppResult<Vec<Soin>> {
+    async fn get_all(&self, page: u32, per_page: u32, nom_search: Option<&str>, unite_search: Option<&str>) -> AppResult<PaginatedSoin> {
         let conn = self.db.get_connection()?;
         
-        let mut stmt = conn.prepare("SELECT id, nom, unite_defaut FROM soins ORDER BY nom")?;
+        // Build search conditions and parameters
+        let mut conditions = Vec::new();
+        let mut search_params = Vec::new();
         
-        let soins = stmt.query_map([], |row| {
-            Ok(Soin {
-                id: Some(row.get(0)?),
-                nom: row.get(1)?,
-                unite_defaut: row.get(2)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(soins)
+        if let Some(nom_term) = nom_search {
+            let nom_trimmed = nom_term.trim();
+            if !nom_trimmed.is_empty() {
+                conditions.push("nom LIKE ?");
+                search_params.push(format!("%{}%", nom_trimmed));
+            }
+        }
+        
+        if let Some(unite_term) = unite_search {
+            let unite_trimmed = unite_term.trim();
+            if !unite_trimmed.is_empty() {
+                conditions.push("unite_defaut LIKE ?");
+                search_params.push(format!("%{}%", unite_trimmed));
+            }
+        }
+        
+        let where_clause = if conditions.is_empty() {
+            String::new()
+        } else {
+            format!("WHERE {}", conditions.join(" AND "))
+        };
+        
+        // Count total matching records
+        let count_query = format!("SELECT COUNT(*) FROM soins {}", where_clause);
+        let total: i64 = if search_params.is_empty() {
+            conn.query_row(&count_query, [], |row| row.get(0))?
+        } else {
+            conn.query_row(
+                &count_query,
+                rusqlite::params_from_iter(search_params.iter()),
+                |row| row.get(0)
+            )?
+        };
+        
+        // Calculate pagination
+        let offset = (page.saturating_sub(1)) * per_page;
+        let total_pages = if total == 0 { 1 } else { ((total as f64) / (per_page as f64)).ceil() as u32 };
+        
+        // Get paginated data
+        let data_query = format!(
+            "SELECT id, nom, unite_defaut, created_at FROM soins {} ORDER BY nom LIMIT ? OFFSET ?",
+            where_clause
+        );
+        
+        // Prepare all parameters: search params + pagination params
+        let mut all_params = search_params;
+        all_params.push(per_page.to_string());
+        all_params.push(offset.to_string());
+        
+        let mut stmt = conn.prepare(&data_query)?;
+        let soins_list = stmt.query_map(
+            rusqlite::params_from_iter(all_params.iter()),
+            |row| {
+                let created_at_str: String = row.get(3)?;
+                
+                // Parse using NaiveDateTime first, then convert to UTC
+                let naive_dt = chrono::NaiveDateTime::parse_from_str(&created_at_str, "%Y-%m-%d %H:%M:%S")
+                    .map_err(|e| {
+                        rusqlite::Error::ToSqlConversionFailure(Box::new(e))
+                    })?;
+                let created_at = DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc);
+                
+                Ok(Soin {
+                    id: Some(row.get(0)?),
+                    nom: row.get(1)?,
+                    unite_defaut: row.get(2)?,
+                    created_at,
+                })
+            }
+        )?.collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(PaginatedSoin {
+            data: soins_list,
+            total,
+            page,
+            limit: per_page,
+            total_pages,
+            has_next: page < total_pages,
+            has_prev: page > 1,
+        })
     }
 
     async fn get_by_id(&self, id: i64) -> AppResult<Soin> {
         let conn = self.db.get_connection()?;
         
-        let soin = conn.query_row(
-            "SELECT id, nom, unite_defaut FROM soins WHERE id = ?1",
-            [id],
-            |row| Ok(Soin {
+        let mut stmt = conn.prepare("SELECT id, nom, unite_defaut, created_at FROM soins WHERE id = ?1")?;
+        let soin = stmt.query_row([id], |row| {
+            let created_at_str: String = row.get(3)?;
+            
+            // Parse using NaiveDateTime first, then convert to UTC
+            let naive_dt = chrono::NaiveDateTime::parse_from_str(&created_at_str, "%Y-%m-%d %H:%M:%S")
+                .map_err(|e| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(e))
+                })?;
+            let created_at = DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc);
+            
+            Ok(Soin {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
                 unite_defaut: row.get(2)?,
-            }),
-        ).map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => AppError::not_found("Soin", id),
-            _ => AppError::from(e),
+                created_at,
+            })
+        }).map_err(|e| {
+            match e {
+                rusqlite::Error::QueryReturnedNoRows => AppError::not_found("Soin", id),
+                _ => e.into(),
+            }
         })?;
-
+        
         Ok(soin)
     }
 
@@ -241,10 +329,24 @@ impl SoinRepositoryTrait for SoinRepository {
             return Err(AppError::not_found("Soin", soin.id));
         }
 
+        // Get the created_at timestamp from the database
+        let mut stmt = conn.prepare("SELECT created_at FROM soins WHERE id = ?1")?;
+        let created_at: String = stmt.query_row([soin.id], |row| {
+            Ok(row.get(0)?)
+        })?;
+
+        // Parse the timestamp using NaiveDateTime first, then convert to UTC
+        let naive_dt = chrono::NaiveDateTime::parse_from_str(&created_at, "%Y-%m-%d %H:%M:%S")
+            .map_err(|e| {
+                AppError::validation_error("created_at", &format!("Failed to parse date '{}': {}", created_at, e))
+            })?;
+        let created_at = DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc);
+
         Ok(Soin {
             id: Some(soin.id),
             nom: soin.nom,
             unite_defaut: soin.unite_defaut,
+            created_at,
         })
     }
 
@@ -276,20 +378,30 @@ impl SoinRepositoryTrait for SoinRepository {
 
         Ok(())
     }
-
+    
     async fn search_by_name(&self, nom: &str) -> AppResult<Vec<Soin>> {
         let conn = self.db.get_connection()?;
         
         let search_pattern = format!("%{}%", nom);
         let mut stmt = conn.prepare(
-            "SELECT id, nom, unite_defaut FROM soins WHERE nom LIKE ?1 ORDER BY nom"
+            "SELECT id, nom, unite_defaut, created_at FROM soins WHERE nom LIKE ?1 ORDER BY nom"
         )?;
         
         let soins = stmt.query_map([search_pattern], |row| {
+            let created_at_str: String = row.get(3)?;
+            
+            // Parse using NaiveDateTime first, then convert to UTC
+            let naive_dt = chrono::NaiveDateTime::parse_from_str(&created_at_str, "%Y-%m-%d %H:%M:%S")
+                .map_err(|e| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(e))
+                })?;
+            let created_at = DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc);
+            
             Ok(Soin {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
                 unite_defaut: row.get(2)?,
+                created_at,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -301,19 +413,29 @@ impl SoinRepositoryTrait for SoinRepository {
         let conn = self.db.get_connection()?;
         
         let mut stmt = conn.prepare(
-            "SELECT s.id, s.nom, s.unite_defaut, COUNT(sq.soins_id) as usage_count
+            "SELECT s.id, s.nom, s.unite_defaut, s.created_at, COUNT(sq.soins_id) as usage_count
              FROM soins s
              LEFT JOIN suivi_quotidien sq ON s.id = sq.soins_id
-             GROUP BY s.id, s.nom, s.unite_defaut
+             GROUP BY s.id, s.nom, s.unite_defaut, s.created_at
              ORDER BY usage_count DESC, s.nom
              LIMIT ?1"
         )?;
         
         let soins = stmt.query_map([limit], |row| {
+            let created_at_str: String = row.get(3)?;
+            
+            // Parse using NaiveDateTime first, then convert to UTC
+            let naive_dt = chrono::NaiveDateTime::parse_from_str(&created_at_str, "%Y-%m-%d %H:%M:%S")
+                .map_err(|e| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(e))
+                })?;
+            let created_at = DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc);
+            
             Ok(Soin {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
                 unite_defaut: row.get(2)?,
+                created_at,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
