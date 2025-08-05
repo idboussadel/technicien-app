@@ -42,6 +42,13 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            // Auth commands
+            commands::register_user,
+            commands::login_user,
+            commands::logout_user,
+            commands::verify_token,
+            commands::update_user_profile,
+            commands::update_user_password,
             // Ferme commands
             commands::create_ferme,
             commands::get_all_fermes,

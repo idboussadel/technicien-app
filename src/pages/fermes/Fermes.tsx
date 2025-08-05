@@ -302,7 +302,7 @@ export default function Fermes({
           </Dialog>
 
           {/* Farms List */}
-          <main className="px-6 py-8">
+          <main className="py-3 px-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>

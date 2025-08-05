@@ -6,8 +6,10 @@
 pub mod ferme_commands;
 pub mod personnel_commands;
 pub mod soin_commands;
+pub mod auth_commands;
 
 // Re-export all commands for easy access
 pub use ferme_commands::*;
 pub use personnel_commands::*;
 pub use soin_commands::*;
+pub use auth_commands::*;

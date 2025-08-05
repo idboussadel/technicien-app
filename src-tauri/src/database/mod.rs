@@ -62,6 +62,19 @@ impl DatabaseManager {
     pub fn initialize_schema(&self) -> AppResult<()> {
         let conn = self.get_connection()?;
         
+        // Création de la table users (pour l'authentification)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                email TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
         // Création de la table fermes
         conn.execute(
             "CREATE TABLE IF NOT EXISTS fermes (
@@ -155,6 +168,18 @@ impl DatabaseManager {
     /// # Arguments
     /// * `conn` - La connexion à la base de données
     fn create_indexes(&self, conn: &Connection) -> AppResult<()> {
+        // Index pour les recherches d'utilisateurs par nom d'utilisateur
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+            [],
+        )?;
+
+        // Index pour les recherches d'utilisateurs par email
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
+            [],
+        )?;
+
         // Index pour les recherches de bandes par ferme
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_bandes_ferme_id ON bandes(ferme_id)",

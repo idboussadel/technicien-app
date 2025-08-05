@@ -9,6 +9,7 @@ pub mod bande;
 pub mod semaine;
 pub mod suivi_quotidien;
 pub mod soin;
+pub mod user;
 
 // Re-export all models for easy access
 pub use ferme::*;
@@ -17,3 +18,4 @@ pub use bande::*;
 pub use semaine::*;
 pub use suivi_quotidien::*;
 pub use soin::*;
+pub use user::*;

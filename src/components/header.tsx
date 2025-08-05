@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Ferme {
   id: number;
@@ -32,7 +33,6 @@ interface HeaderProps {
   searchValue: string;
   onSearchChange: (value: string) => void;
   onAccountClick: () => void;
-  onSignOut: () => void;
 }
 
 export default function Header({
@@ -45,18 +45,31 @@ export default function Header({
   searchValue,
   onSearchChange,
   onAccountClick,
-  onSignOut,
 }: HeaderProps) {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const [isMaximized, setIsMaximized] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const { user, logout } = useAuth();
+
   const handleNewFerme = () => {
     if (onNewFerme) {
       onNewFerme();
     } else {
       console.log("New ferme clicked");
     }
+  };
+
+  const handleSignOut = async () => {
+    await logout();
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (user?.username) {
+      return user.username.charAt(0).toUpperCase();
+    }
+    return "U";
   };
 
   const handleMinimize = async () => {
@@ -122,7 +135,11 @@ export default function Header({
         <div className="flex items-center justify-between h-full" data-tauri-drag-region>
           <div className="flex items-center space-x-4 pl-6" data-tauri-drag-region={false}>
             {/* Logo */}
-            <img src="src\assets\icon.png" alt="Logo" className="w-8 h-8 p-1 border rounded-md" />
+            <img
+              src="/icon.png"
+              alt="Logo"
+              className="w-8 h-8 object-contain p-1 border rounded-md"
+            />
 
             {/* Ferme Selector - Only show on ferme-related pages */}
             {showFermeSelector && (
@@ -301,7 +318,7 @@ export default function Header({
                   <button className="focus:outline-none">
                     <Avatar className="w-8 h-8 hover:ring-2 ring-border hover:ring-ring transition-all cursor-pointer">
                       <AvatarFallback className="bg-orange-100 border border-orange-600 text-orange-600 text-sm font-medium">
-                        T
+                        {getUserInitials()}
                       </AvatarFallback>
                     </Avatar>
                   </button>
@@ -311,13 +328,15 @@ export default function Header({
                     <div className="flex items-center space-x-3">
                       <Avatar className="w-10 h-10  ">
                         <AvatarFallback className="bg-orange-100 border border-orange-600 text-orange-600 text-sm font-medium">
-                          T
+                          {getUserInitials()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">Technicien</p>
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {user?.username || "Utilisateur"}
+                        </p>
                         <p className="text-sm text-muted-foreground truncate">
-                          technicien@ferme.com
+                          {user?.email || "email@exemple.com"}
                         </p>
                       </div>
                     </div>
@@ -327,7 +346,7 @@ export default function Header({
                       <User className="w-4 h-4 mr-3" />
                       Compte
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={onSignOut} className="cursor-pointer">
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                       <LogOut className="w-4 h-4 mr-3" />
                       Se déconnecter
                     </DropdownMenuItem>
