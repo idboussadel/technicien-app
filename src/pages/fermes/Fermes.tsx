@@ -44,22 +44,24 @@ import {
 interface Ferme {
   id: number;
   nom: string;
+  nbr_meuble: number;
 }
 
 interface CreateFerme {
   nom: string;
+  nbr_meuble: number;
 }
 
 interface UpdateFerme {
   id: number;
   nom: string;
+  nbr_meuble: number;
 }
 
 interface FermesPageProps {
   selectedFerme: Ferme | null;
   isCreateDialogOpen: boolean;
   setIsCreateDialogOpen: (open: boolean) => void;
-  onFermesUpdate: () => Promise<void>;
   onFermeSelect: (ferme: Ferme) => void;
   onBackToFermes: () => void;
 }
@@ -72,6 +74,10 @@ const createFermeSchema = z.object({
     .min(2, "Le nom doit contenir au moins 2 caractères")
     .max(100, "Le nom ne peut pas dépasser 100 caractères")
     .trim(),
+  nbr_meuble: z
+    .number()
+    .int("Le nombre de meubles doit être un entier")
+    .min(0, "Le nombre de meubles ne peut pas être négatif"),
 });
 
 type CreateFermeForm = z.infer<typeof createFermeSchema>;
@@ -80,7 +86,6 @@ export default function Fermes({
   selectedFerme,
   isCreateDialogOpen,
   setIsCreateDialogOpen,
-  onFermesUpdate,
   onFermeSelect,
   onBackToFermes,
 }: FermesPageProps) {
@@ -103,6 +108,7 @@ export default function Fermes({
     resolver: zodResolver(createFermeSchema),
     defaultValues: {
       nom: "",
+      nbr_meuble: 0,
     },
   });
 
@@ -111,6 +117,7 @@ export default function Fermes({
     resolver: zodResolver(createFermeSchema),
     defaultValues: {
       nom: "",
+      nbr_meuble: 0,
     },
   });
 
@@ -138,6 +145,7 @@ export default function Fermes({
       setIsFormSubmitting(true);
       const createData: CreateFerme = {
         nom: data.nom,
+        nbr_meuble: data.nbr_meuble,
       };
 
       await invoke("create_ferme", { ferme: createData });
@@ -162,6 +170,7 @@ export default function Fermes({
   const handleModifier = (ferme: Ferme) => {
     setEditingFerme(ferme);
     editForm.setValue("nom", ferme.nom);
+    editForm.setValue("nbr_meuble", ferme.nbr_meuble);
     setIsEditDialogOpen(true);
   };
 
@@ -176,6 +185,7 @@ export default function Fermes({
       const updateData: UpdateFerme = {
         id: editingFerme.id,
         nom: data.nom,
+        nbr_meuble: data.nbr_meuble,
       };
 
       await invoke("update_ferme", { ferme: updateData });
@@ -257,7 +267,7 @@ export default function Fermes({
         <div className="space-y-6">
           {/* Create Farm Dialog */}
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent>
               <DialogHeader>
                 <DialogTitle>Créer une nouvelle ferme</DialogTitle>
                 <DialogDescription>
@@ -275,8 +285,30 @@ export default function Fermes({
                         <FormControl>
                           <Input
                             placeholder="Ex: Ferme de la Vallée"
+                            autoComplete="off"
                             {...field}
                             disabled={isFormSubmitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="nbr_meuble"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre de meubles</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Entrez le nombre de meubles"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            value={field.value === 0 ? "" : field.value}
+                            disabled={isFormSubmitting}
+                            min="0"
                           />
                         </FormControl>
                         <FormMessage />
@@ -369,8 +401,13 @@ export default function Fermes({
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      <div className="flex-1 flex items-center justify-center">
-                        <h3 className="text-2xl capitalize font-bold text-center">{ferme.nom}</h3>
+                      <div className="flex-1 flex flex-col items-center justify-center">
+                        <h3 className="text-2xl capitalize font-bold text-center mb-2">
+                          {ferme.nom}
+                        </h3>
+                        <p className="text-sm text-white/70">
+                          {ferme.nbr_meuble} meuble{ferme.nbr_meuble !== 1 ? "s" : ""}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -411,6 +448,27 @@ export default function Fermes({
                             placeholder="Nom de la ferme"
                             {...field}
                             disabled={isEditSubmitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={editForm.control}
+                    name="nbr_meuble"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre de meubles</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="Entrez le nombre de meubles"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                            value={field.value === 0 ? "" : field.value}
+                            disabled={isEditSubmitting}
+                            min="0"
                           />
                         </FormControl>
                         <FormMessage />

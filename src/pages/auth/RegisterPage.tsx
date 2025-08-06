@@ -235,7 +235,12 @@ export default function RegisterPage({ onRegister, onSwitchToLogin }: RegisterPa
                       Code d'enregistrement
                     </FormLabel>
                     <FormControl>
-                      <Input placeholder="Code secret requis" {...field} disabled={isSubmitting} />
+                      <Input
+                        placeholder="Code secret requis"
+                        {...field}
+                        disabled={isSubmitting}
+                        autoComplete="off"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
