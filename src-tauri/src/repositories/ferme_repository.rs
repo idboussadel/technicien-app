@@ -90,6 +90,13 @@ impl FermeRepositoryTrait for FermeRepository {
             ));
         }
 
+        if ferme.nbr_meuble < 0 {
+            return Err(AppError::validation_error(
+                "nbr_meuble", 
+                "Le nombre de meubles ne peut pas être négatif"
+            ));
+        }
+
         // Vérifier que le nom n'existe pas déjà
         let existing: Result<i64, _> = conn.query_row(
             "SELECT COUNT(*) FROM fermes WHERE nom = ?1",
@@ -108,8 +115,8 @@ impl FermeRepositoryTrait for FermeRepository {
 
         // Insertion de la nouvelle ferme
         conn.execute(
-            "INSERT INTO fermes (nom) VALUES (?1)",
-            [&ferme.nom],
+            "INSERT INTO fermes (nom, nbr_meuble) VALUES (?1, ?2)",
+            [&ferme.nom, &ferme.nbr_meuble.to_string()],
         )?;
 
         let id = conn.last_insert_rowid();
@@ -117,18 +124,20 @@ impl FermeRepositoryTrait for FermeRepository {
         Ok(Ferme {
             id: Some(id),
             nom: ferme.nom,
+            nbr_meuble: ferme.nbr_meuble,
         })
     }
 
     async fn get_all(&self) -> AppResult<Vec<Ferme>> {
         let conn = self.db.get_connection()?;
         
-        let mut stmt = conn.prepare("SELECT id, nom FROM fermes ORDER BY nom")?;
+        let mut stmt = conn.prepare("SELECT id, nom, nbr_meuble FROM fermes ORDER BY nom")?;
         
         let fermes = stmt.query_map([], |row| {
             Ok(Ferme {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
+                nbr_meuble: row.get(2)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -140,11 +149,12 @@ impl FermeRepositoryTrait for FermeRepository {
         let conn = self.db.get_connection()?;
         
         let ferme = conn.query_row(
-            "SELECT id, nom FROM fermes WHERE id = ?1",
+            "SELECT id, nom, nbr_meuble FROM fermes WHERE id = ?1",
             [id],
             |row| Ok(Ferme {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
+                nbr_meuble: row.get(2)?,
             }),
         ).map_err(|e| match e {
             rusqlite::Error::QueryReturnedNoRows => AppError::not_found("Ferme", id),
@@ -162,6 +172,13 @@ impl FermeRepositoryTrait for FermeRepository {
             return Err(AppError::validation_error(
                 "nom", 
                 "Le nom de la ferme ne peut pas être vide"
+            ));
+        }
+
+        if ferme.nbr_meuble < 0 {
+            return Err(AppError::validation_error(
+                "nbr_meuble", 
+                "Le nombre de meubles ne peut pas être négatif"
             ));
         }
 
@@ -183,8 +200,8 @@ impl FermeRepositoryTrait for FermeRepository {
 
         // Mise à jour de la ferme
         let rows_affected = conn.execute(
-            "UPDATE fermes SET nom = ?1 WHERE id = ?2",
-            [&ferme.nom, &ferme.id.to_string()],
+            "UPDATE fermes SET nom = ?1, nbr_meuble = ?2 WHERE id = ?3",
+            [&ferme.nom, &ferme.nbr_meuble.to_string(), &ferme.id.to_string()],
         )?;
 
         if rows_affected == 0 {
@@ -194,6 +211,7 @@ impl FermeRepositoryTrait for FermeRepository {
         Ok(Ferme {
             id: Some(ferme.id),
             nom: ferme.nom,
+            nbr_meuble: ferme.nbr_meuble,
         })
     }
 
@@ -231,13 +249,14 @@ impl FermeRepositoryTrait for FermeRepository {
         
         let search_pattern = format!("%{}%", nom);
         let mut stmt = conn.prepare(
-            "SELECT id, nom FROM fermes WHERE nom LIKE ?1 ORDER BY nom"
+            "SELECT id, nom, nbr_meuble FROM fermes WHERE nom LIKE ?1 ORDER BY nom"
         )?;
         
         let fermes = stmt.query_map([search_pattern], |row| {
             Ok(Ferme {
                 id: Some(row.get(0)?),
                 nom: row.get(1)?,
+                nbr_meuble: row.get(2)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;

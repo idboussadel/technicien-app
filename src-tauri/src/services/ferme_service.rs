@@ -31,22 +31,9 @@ impl FermeService {
     /// # Returns
     /// La ferme créée avec son ID généré
     pub async fn create_ferme(&self, ferme: CreateFerme) -> AppResult<Ferme> {
-        // Validation métier supplémentaire
-        if ferme.nom.len() < 2 {
-            return Err(AppError::business_logic(
-                "Le nom de la ferme doit contenir au moins 2 caractères"
-            ));
-        }
-
-        if ferme.nom.len() > 100 {
-            return Err(AppError::business_logic(
-                "Le nom de la ferme ne peut pas dépasser 100 caractères"
-            ));
-        }
-
-        // Nettoyer et normaliser le nom
         let cleaned_ferme = CreateFerme {
             nom: ferme.nom.trim().to_string(),
+            nbr_meuble: ferme.nbr_meuble,
         };
 
         self.repository.create(cleaned_ferme).await
@@ -86,30 +73,11 @@ impl FermeService {
     /// # Returns
     /// La ferme mise à jour
     pub async fn update_ferme(&self, ferme: UpdateFerme) -> AppResult<Ferme> {
-        // Validation métier
-        if ferme.id <= 0 {
-            return Err(AppError::validation_error(
-                "id",
-                "L'ID doit être un nombre positif"
-            ));
-        }
-
-        if ferme.nom.len() < 2 {
-            return Err(AppError::business_logic(
-                "Le nom de la ferme doit contenir au moins 2 caractères"
-            ));
-        }
-
-        if ferme.nom.len() > 100 {
-            return Err(AppError::business_logic(
-                "Le nom de la ferme ne peut pas dépasser 100 caractères"
-            ));
-        }
-
         // Nettoyer et normaliser le nom
         let cleaned_ferme = UpdateFerme {
             id: ferme.id,
             nom: ferme.nom.trim().to_string(),
+            nbr_meuble: ferme.nbr_meuble,
         };
 
         self.repository.update(cleaned_ferme).await

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Ferme {
     pub id: Option<i64>,
     pub nom: String,
+    pub nbr_meuble: i32,
 }
 
 /// Structure pour créer une nouvelle ferme
@@ -17,6 +18,7 @@ pub struct Ferme {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateFerme {
     pub nom: String,
+    pub nbr_meuble: i32,
 }
 
 /// Structure pour mettre à jour une ferme existante
@@ -27,4 +29,5 @@ pub struct CreateFerme {
 pub struct UpdateFerme {
     pub id: i64,
     pub nom: String,
+    pub nbr_meuble: i32,
 }

@@ -79,7 +79,8 @@ impl DatabaseManager {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS fermes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nom TEXT NOT NULL UNIQUE
+                nom TEXT NOT NULL UNIQUE,
+                nbr_meuble INTEGER NOT NULL DEFAULT 0
             )",
             [],
         )?;
