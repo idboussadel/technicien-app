@@ -18,7 +18,6 @@ pub async fn get_all_soins(
     page: Option<u32>,
     perPage: Option<u32>,
     nomSearch: Option<String>,
-    uniteSearch: Option<String>,
     db: State<'_, Arc<DatabaseManager>>,
 ) -> Result<PaginatedSoin, String> {
     let repo = SoinRepository::new(db.inner().clone());
@@ -31,12 +30,7 @@ pub async fn get_all_soins(
         if trimmed.is_empty() { None } else { Some(trimmed) }
     });
     
-    let unite_search = uniteSearch.as_ref().and_then(|s| {
-        let trimmed = s.trim();
-        if trimmed.is_empty() { None } else { Some(trimmed) }
-    });
-    
-    repo.get_all(page, per_page, nom_search, unite_search).await.map_err(|e| e.to_string())
+    repo.get_all(page, per_page, nom_search).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

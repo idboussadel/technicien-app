@@ -108,6 +108,7 @@ export default function LoginPage({ onLogin, onSwitchToRegister }: LoginPageProp
                         placeholder="Votre nom d'utilisateur"
                         {...field}
                         disabled={isSubmitting}
+                        autoComplete="off"
                       />
                     </FormControl>
                     <FormMessage />

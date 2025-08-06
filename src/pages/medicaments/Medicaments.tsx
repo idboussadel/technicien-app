@@ -66,7 +66,6 @@ export default function Medicaments() {
   const [editingSoin, setEditingSoin] = useState<Soin | null>(null);
   const [deletingSoin, setDeletingSoin] = useState<Soin | null>(null);
   const [nomSearch, setNomSearch] = useState("");
-  const [uniteSearch, setUniteSearch] = useState("");
 
   /**
    * Handle page size change
@@ -75,18 +74,13 @@ export default function Medicaments() {
     const newLimit = parseInt(newPageSize);
     setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
     // Reload with new page size - pass the new limit directly
-    loadSoins(1, nomSearch, uniteSearch, newLimit);
+    loadSoins(1, nomSearch, newLimit);
   };
 
   /**
    * Load soins from backend with pagination and search
    */
-  const loadSoins = async (
-    page: number = 1,
-    nomSearch: string = "",
-    uniteSearch: string = "",
-    perPage?: number
-  ) => {
+  const loadSoins = async (page: number = 1, nomSearch: string = "", perPage?: number) => {
     try {
       setIsLoading(true);
 
@@ -94,7 +88,6 @@ export default function Medicaments() {
         page,
         perPage: perPage || pagination.limit,
         nomSearch: nomSearch.trim(),
-        uniteSearch: uniteSearch.trim(),
       };
 
       const result = await invoke<PaginatedSoin>("get_all_soins", params);
@@ -120,14 +113,14 @@ export default function Medicaments() {
    * Handle soin creation
    */
   const handleSoinCreated = () => {
-    loadSoins(pagination.page, nomSearch, uniteSearch);
+    loadSoins(pagination.page, nomSearch);
   };
 
   /**
    * Handle soin update
    */
   const handleSoinUpdated = () => {
-    loadSoins(pagination.page, nomSearch, uniteSearch);
+    loadSoins(pagination.page, nomSearch);
     setEditingSoin(null);
   };
 
@@ -159,7 +152,7 @@ export default function Medicaments() {
       const newTotal = pagination.total - 1;
       const newTotalPages = Math.ceil(newTotal / pagination.limit);
       const currentPage = pagination.page > newTotalPages ? newTotalPages : pagination.page;
-      loadSoins(Math.max(currentPage, 1), nomSearch, uniteSearch);
+      loadSoins(Math.max(currentPage, 1), nomSearch);
     } catch (error) {
       toast.error("Impossible de supprimer le médicament");
       console.error("Erreur lors de la suppression:", error);
@@ -172,7 +165,7 @@ export default function Medicaments() {
    * Handle search
    */
   const handleSearch = () => {
-    loadSoins(1, nomSearch, uniteSearch); // Reset to first page when searching
+    loadSoins(1, nomSearch); // Reset to first page when searching
   };
 
   /**
@@ -180,15 +173,14 @@ export default function Medicaments() {
    */
   const handleClearSearch = () => {
     setNomSearch("");
-    setUniteSearch("");
-    loadSoins(1, "", ""); // Reset to first page with no search
+    loadSoins(1, ""); // Reset to first page with no search
   };
 
   /**
    * Handle page change
    */
   const handlePageChange = (page: number) => {
-    loadSoins(page, nomSearch, uniteSearch);
+    loadSoins(page, nomSearch);
   };
 
   // Load soins on component mount
@@ -242,17 +234,11 @@ export default function Medicaments() {
           onChange={(e) => setNomSearch(e.target.value)}
           className="w-full max-w-[350px] bg-white"
         />
-        <Input
-          placeholder="Rechercher par unité..."
-          value={uniteSearch}
-          onChange={(e) => setUniteSearch(e.target.value)}
-          className="w-full max-w-[350px] bg-white"
-        />
         <Button onClick={handleSearch} className="flex items-center !h-10 gap-2">
           <Search className="h-4 w-4" />
           Rechercher
         </Button>
-        {(nomSearch || uniteSearch) && (
+        {nomSearch && (
           <Button onClick={handleClearSearch} variant="ghost" className="text-muted-foreground">
             Effacer
           </Button>

@@ -22,6 +22,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Soin {
   id?: number;
@@ -151,12 +158,27 @@ export default function UpdateSoinModal({
                 <FormItem>
                   <FormLabel>Unité par défaut</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="Entrez l'unité (ml, mg, etc.)"
-                      {...field}
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
                       disabled={isSubmitting}
-                      autoComplete="off"
-                    />
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Sélectionnez une unité" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mg">mg (milligrammes)</SelectItem>
+                        <SelectItem value="g">g (grammes)</SelectItem>
+                        <SelectItem value="kg">kg (kilogrammes)</SelectItem>
+                        <SelectItem value="ml">ml (millilitres)</SelectItem>
+                        <SelectItem value="l">l (litres)</SelectItem>
+                        <SelectItem value="comprimé">comprimé</SelectItem>
+                        <SelectItem value="capsule">capsule</SelectItem>
+                        <SelectItem value="dose">dose</SelectItem>
+                        <SelectItem value="unité">unité</SelectItem>
+                        <SelectItem value="pièce">pièce</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

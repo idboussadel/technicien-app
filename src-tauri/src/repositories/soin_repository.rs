@@ -19,7 +19,7 @@ pub trait SoinRepositoryTrait: Send + Sync {
     async fn create(&self, soin: CreateSoin) -> AppResult<Soin>;
     
     /// Get all soins with pagination and search
-    async fn get_all(&self, page: u32, per_page: u32, nom_search: Option<&str>, unite_search: Option<&str>) -> AppResult<PaginatedSoin>;
+    async fn get_all(&self, page: u32, per_page: u32, nom_search: Option<&str>) -> AppResult<PaginatedSoin>;
     
     /// Récupère un soin par son ID
     /// 
@@ -164,7 +164,7 @@ impl SoinRepositoryTrait for SoinRepository {
         })
     }
 
-    async fn get_all(&self, page: u32, per_page: u32, nom_search: Option<&str>, unite_search: Option<&str>) -> AppResult<PaginatedSoin> {
+    async fn get_all(&self, page: u32, per_page: u32, nom_search: Option<&str>) -> AppResult<PaginatedSoin> {
         let conn = self.db.get_connection()?;
         
         // Build search conditions and parameters
@@ -176,14 +176,6 @@ impl SoinRepositoryTrait for SoinRepository {
             if !nom_trimmed.is_empty() {
                 conditions.push("nom LIKE ?");
                 search_params.push(format!("%{}%", nom_trimmed));
-            }
-        }
-        
-        if let Some(unite_term) = unite_search {
-            let unite_trimmed = unite_term.trim();
-            if !unite_trimmed.is_empty() {
-                conditions.push("unit LIKE ?");
-                search_params.push(format!("%{}%", unite_trimmed));
             }
         }
         
