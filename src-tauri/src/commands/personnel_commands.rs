@@ -56,3 +56,11 @@ pub async fn delete_personnel(
     let repo = PersonnelRepository::new(db.inner().clone());
     repo.delete(id).await.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn get_personnel_list(
+    db: State<'_, Arc<DatabaseManager>>,
+) -> Result<Vec<Personnel>, String> {
+    let repo = PersonnelRepository::new(db.inner().clone());
+    repo.get_personnel_list().await.map_err(|e| e.to_string())
+}

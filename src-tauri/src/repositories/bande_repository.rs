@@ -12,6 +12,7 @@ pub trait BandeRepositoryTrait: Send + Sync {
     async fn delete(&self, id: i64) -> AppResult<()>;
     async fn get_by_ferme(&self, ferme_id: i64) -> AppResult<Vec<BandeWithDetails>>;
     async fn get_by_personnel(&self, personnel_id: i64) -> AppResult<Vec<BandeWithDetails>>;
+    async fn get_available_batiments(&self, ferme_id: i64) -> AppResult<Vec<String>>;
 }
 
 pub struct BandeRepository {
@@ -294,5 +295,40 @@ impl BandeRepositoryTrait for BandeRepository {
         .collect::<Result<Vec<_>, _>>()?;
 
         Ok(bandes)
+    }
+
+    async fn get_available_batiments(&self, ferme_id: i64) -> AppResult<Vec<String>> {
+        let conn = self.db.get_connection()?;
+        
+        // First, get the number of meubles in the ferme
+        let nbr_meuble: i32 = conn.query_row(
+            "SELECT nbr_meuble FROM fermes WHERE id = ?1",
+            [ferme_id],
+            |row| row.get(0),
+        ).map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => AppError::not_found("Ferme", ferme_id),
+            _ => AppError::from(e),
+        })?;
+
+        // Get occupied batiments for this ferme
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT numero_batiment FROM bandes WHERE ferme_id = ?1"
+        )?;
+        
+        let occupied_batiments: Vec<String> = stmt.query_map([ferme_id], |row| {
+            Ok(row.get::<_, String>(0)?)
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+        // Generate available batiments (1 to nbr_meuble, excluding occupied ones)
+        let mut available_batiments = Vec::new();
+        for i in 1..=nbr_meuble {
+            let batiment_num = i.to_string();
+            if !occupied_batiments.contains(&batiment_num) {
+                available_batiments.push(batiment_num);
+            }
+        }
+
+        Ok(available_batiments)
     }
 }

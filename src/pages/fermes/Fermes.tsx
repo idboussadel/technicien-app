@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Building2, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Plus, Building2, MoreHorizontal, Edit, Trash2, Calendar, Users, Home } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,11 +40,41 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import CreateBandeModal from "./bandes/create-bande-modal";
 
 interface Ferme {
   id: number;
   nom: string;
   nbr_meuble: number;
+}
+
+interface BandeWithDetails {
+  id: number | null;
+  date_entree: string;
+  quantite: number;
+  ferme_id: number;
+  ferme_nom: string;
+  numero_batiment: string;
+  type_poussin: string;
+  personnel_id: number;
+  personnel_nom: string;
+  notes: string | null;
+}
+
+interface CreateBande {
+  date_entree: string;
+  quantite: number;
+  ferme_id: number;
+  numero_batiment: string;
+  type_poussin: string;
+  personnel_id: number;
+  notes: string | null;
+}
+
+interface Personnel {
+  id: number;
+  nom: string;
+  telephone: string | null;
 }
 
 interface CreateFerme {
@@ -102,6 +132,13 @@ export default function Fermes({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingFerme, setDeletingFerme] = useState<Ferme | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Bande management state
+  const [bandes, setBandes] = useState<BandeWithDetails[]>([]);
+  const [isBandesLoading, setIsBandesLoading] = useState(false);
+  const [isCreateBandeDialogOpen, setIsCreateBandeDialogOpen] = useState(false);
+  const [personnel, setPersonnel] = useState<Personnel[]>([]);
+  const [availableBatiments, setAvailableBatiments] = useState<string[]>([]);
 
   // Form setup with validation
   const form = useForm<CreateFermeForm>({
@@ -234,27 +271,199 @@ export default function Fermes({
     }
   };
 
-  // Charger les fermes au montage du composant
+  /**
+   * Charge les bandes d'une ferme spécifique
+   */
+  const loadBandes = async (fermeId: number) => {
+    try {
+      setIsBandesLoading(true);
+      const result = await invoke<BandeWithDetails[]>("get_bandes_by_ferme", { fermeId });
+      setBandes(result);
+    } catch (error) {
+      toast.error("Impossible de charger les bandes");
+      console.error("Impossible de charger les bandes:", error);
+    } finally {
+      setIsBandesLoading(false);
+    }
+  };
+
+  /**
+   * Charge la liste du personnel
+   */
+  const loadPersonnel = async () => {
+    try {
+      const result = await invoke<Personnel[]>("get_personnel_list");
+      setPersonnel(result);
+    } catch (error) {
+      toast.error("Impossible de charger le personnel");
+      console.error("Impossible de charger le personnel:", error);
+    }
+  };
+
+  /**
+   * Charge les bâtiments disponibles pour une ferme
+   */
+  const loadAvailableBatiments = async (fermeId: number) => {
+    try {
+      const result = await invoke<string[]>("get_available_batiments", { fermeId });
+      setAvailableBatiments(result);
+    } catch (error) {
+      toast.error("Impossible de charger les bâtiments disponibles");
+      console.error("Impossible de charger les bâtiments disponibles:", error);
+    }
+  };
+
+  /**
+   * Callback when a bande is created successfully
+   */
+  const handleBandeCreated = async () => {
+    if (selectedFerme) {
+      await loadBandes(selectedFerme.id);
+      await loadAvailableBatiments(selectedFerme.id);
+    }
+  };
+
+  // Load data when a farm is selected
+  useEffect(() => {
+    if (selectedFerme) {
+      loadBandes(selectedFerme.id);
+      loadPersonnel();
+      loadAvailableBatiments(selectedFerme.id);
+    }
+  }, [selectedFerme]);
+
+  // Load farms on component mount
   useEffect(() => {
     loadFermes();
   }, []);
 
-  // If a farm is selected, show the farm details
+  // If a farm is selected, show the farm details with bandes
   if (selectedFerme) {
     return (
       <div className="min-h-screen bg-gray-50">
         <main className="container mx-auto px-6 py-6">
-          <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Bandes de la ferme {selectedFerme.nom}</h2>
-              <Button variant="outline" onClick={onBackToFermes}>
-                Retour aux fermes
-              </Button>
-            </div>
-            <p className="text-muted-foreground">
-              La gestion des bandes sera implémentée prochainement.
-            </p>
-          </Card>
+          <div className="space-y-6">
+            {/* Header */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-3xl font-bold">{selectedFerme.nom}</h2>
+                  <p className="text-muted-foreground">
+                    {selectedFerme.nbr_meuble} meuble{selectedFerme.nbr_meuble !== 1 ? "s" : ""}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => setIsCreateBandeDialogOpen(true)}
+                    disabled={availableBatiments.length === 0}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouvelle bande
+                  </Button>
+                  <Button variant="outline" onClick={onBackToFermes}>
+                    Retour aux fermes
+                  </Button>
+                </div>
+              </div>
+
+              {availableBatiments.length === 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-yellow-800 text-sm">
+                    Tous les bâtiments de cette ferme sont occupés. Vous ne pouvez pas créer de
+                    nouvelles bandes.
+                  </p>
+                </div>
+              )}
+            </Card>
+
+            {/* Bandes List */}
+            <Card className="p-6">
+              <h3 className="text-xl font-semibold mb-4">Bandes</h3>
+
+              {isBandesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : bandes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
+                  <h4 className="text-lg font-semibold mb-2">Aucune bande</h4>
+                  <p className="text-muted-foreground text-center mb-6 max-w-md">
+                    Cette ferme n'a pas encore de bandes. Créez la première bande pour commencer.
+                  </p>
+                  {availableBatiments.length > 0 && (
+                    <Button onClick={() => setIsCreateBandeDialogOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Créer la première bande
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {bandes.map((bande) => (
+                    <Card key={bande.id} className="p-4 hover:shadow-md transition-shadow">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Home className="h-5 w-5 text-primary" />
+                          <span className="font-semibold">Bâtiment {bande.numero_batiment}</span>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Modifier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive">
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Supprimer
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span>Entrée: {bande.date_entree}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {bande.quantite} {bande.type_poussin}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Responsable: </span>
+                          <span>{bande.personnel_nom}</span>
+                        </div>
+                        {bande.notes && (
+                          <div className="mt-3 p-2 bg-gray-50 rounded text-xs">{bande.notes}</div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            {/* Create Bande Modal */}
+            {isCreateBandeDialogOpen && (
+              <CreateBandeModal
+                isOpen={isCreateBandeDialogOpen}
+                onClose={() => setIsCreateBandeDialogOpen(false)}
+                fermeId={selectedFerme.id}
+                fermeName={selectedFerme.nom}
+                personnel={personnel || []}
+                availableBatiments={availableBatiments || []}
+                onBandeCreated={handleBandeCreated}
+              />
+            )}
+          </div>
         </main>
       </div>
     );
@@ -365,7 +574,7 @@ export default function Fermes({
                       onClick={() => onFermeSelect(ferme)}
                     >
                       <DropdownMenu>
-                        <DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="sm"

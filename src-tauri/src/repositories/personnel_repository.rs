@@ -12,6 +12,9 @@ pub trait PersonnelRepositoryTrait: Send + Sync {
     /// Get all personnel with pagination and search
     async fn get_all(&self, page: u32, per_page: u32, nom_search: Option<&str>, tele_search: Option<&str>) -> AppResult<PaginatedPersonnel>;
     
+    /// Get all personnel as a simple list (no pagination)
+    async fn get_personnel_list(&self) -> AppResult<Vec<Personnel>>;
+    
     /// Update existing personnel
     async fn update(&self, personnel: UpdatePersonnel) -> AppResult<Personnel>;
     
@@ -197,5 +200,30 @@ impl PersonnelRepositoryTrait for PersonnelRepository {
         }
 
         Ok(())
+    }
+
+    async fn get_personnel_list(&self) -> AppResult<Vec<Personnel>> {
+        let conn = self.db.get_connection()?;
+        
+        let mut stmt = conn.prepare("SELECT id, nom, telephone, created_at FROM personnel ORDER BY nom")?;
+        let personnel_list = stmt.query_map([], |row| {
+            let created_at_str: String = row.get(3)?;
+            
+            // Parse using NaiveDateTime first, then convert to UTC
+            let naive_dt = chrono::NaiveDateTime::parse_from_str(&created_at_str, "%Y-%m-%d %H:%M:%S")
+                .map_err(|e| {
+                    rusqlite::Error::ToSqlConversionFailure(Box::new(e))
+                })?;
+            let created_at = DateTime::<Utc>::from_naive_utc_and_offset(naive_dt, Utc);
+            
+            Ok(Personnel {
+                id: Some(row.get(0)?),
+                nom: row.get(1)?,
+                telephone: row.get(2)?,
+                created_at,
+            })
+        })?.collect::<Result<Vec<_>, _>>()?;
+        
+        Ok(personnel_list)
     }
 }

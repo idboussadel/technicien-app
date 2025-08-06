@@ -60,6 +60,7 @@ pub fn run() {
             // Personnel commands
             commands::create_personnel,
             commands::get_all_personnel,
+            commands::get_personnel_list,
             commands::update_personnel,
             commands::delete_personnel,
             // Soin commands
@@ -68,6 +69,14 @@ pub fn run() {
             commands::get_soin_by_id,
             commands::update_soin,
             commands::delete_soin,
+            // Bande commands
+            commands::create_bande,
+            commands::get_all_bandes,
+            commands::get_bandes_by_ferme,
+            commands::get_bande_by_id,
+            commands::update_bande,
+            commands::delete_bande,
+            commands::get_available_batiments,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
