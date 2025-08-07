@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-/// Représente une semaine de suivi dans une bande
+/// Représente une semaine de suivi dans un bâtiment
 /// 
-/// Chaque bande peut avoir 5 à 9 semaines de suivi,
+/// Chaque bâtiment peut avoir 5 à 9 semaines de suivi,
 /// chaque semaine contenant 7 jours de données quotidiennes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Semaine {
     pub id: Option<i64>,
-    pub bande_id: i64,
+    pub batiment_id: i64,
     pub numero_semaine: i32,
     pub poids: Option<f64>, // Poids moyen des poussins en grammes
 }
@@ -18,7 +18,7 @@ pub struct Semaine {
 /// car l'ID est généré automatiquement par la base de données.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateSemaine {
-    pub bande_id: i64,
+    pub batiment_id: i64,
     pub numero_semaine: i32,
     pub poids: Option<f64>,
 }
@@ -30,7 +30,7 @@ pub struct CreateSemaine {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateSemaine {
     pub id: i64,
-    pub bande_id: i64,
+    pub batiment_id: i64,
     pub numero_semaine: i32,
     pub poids: Option<f64>,
 }

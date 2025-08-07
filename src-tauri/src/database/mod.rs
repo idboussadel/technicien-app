@@ -112,13 +112,23 @@ impl DatabaseManager {
             "CREATE TABLE IF NOT EXISTS bandes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 date_entree DATE NOT NULL,
-                quantite INTEGER NOT NULL,
                 ferme_id INTEGER NOT NULL,
+                notes TEXT,
+                FOREIGN KEY (ferme_id) REFERENCES fermes(id) ON DELETE RESTRICT
+            )",
+            [],
+        )?;
+
+        // Création de la table batiments
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS batiments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bande_id INTEGER NOT NULL,
                 numero_batiment TEXT NOT NULL,
                 type_poussin TEXT NOT NULL,
                 personnel_id INTEGER NOT NULL,
-                notes TEXT,
-                FOREIGN KEY (ferme_id) REFERENCES fermes(id) ON DELETE RESTRICT,
+                quantite INTEGER NOT NULL,
+                FOREIGN KEY (bande_id) REFERENCES bandes(id) ON DELETE CASCADE,
                 FOREIGN KEY (personnel_id) REFERENCES personnel(id) ON DELETE RESTRICT
             )",
             [],
@@ -128,11 +138,11 @@ impl DatabaseManager {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS semaines (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                bande_id INTEGER NOT NULL,
+                batiment_id INTEGER NOT NULL,
                 numero_semaine INTEGER NOT NULL CHECK (numero_semaine BETWEEN 1 AND 9),
                 poids REAL,
-                FOREIGN KEY (bande_id) REFERENCES bandes(id) ON DELETE CASCADE,
-                UNIQUE(bande_id, numero_semaine)
+                FOREIGN KEY (batiment_id) REFERENCES batiments(id) ON DELETE CASCADE,
+                UNIQUE(batiment_id, numero_semaine)
             )",
             [],
         )?;
@@ -187,21 +197,27 @@ impl DatabaseManager {
             [],
         )?;
 
-        // Index pour les recherches de bandes par personnel
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_bandes_personnel_id ON bandes(personnel_id)",
-            [],
-        )?;
-
         // Index pour les recherches de bandes par date
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_bandes_date_entree ON bandes(date_entree)",
             [],
         )?;
 
-        // Index pour les recherches de semaines par bande
+        // Index pour les recherches de batiments par bande
         conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_semaines_bande_id ON semaines(bande_id)",
+            "CREATE INDEX IF NOT EXISTS idx_batiments_bande_id ON batiments(bande_id)",
+            [],
+        )?;
+
+        // Index pour les recherches de batiments par personnel
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_batiments_personnel_id ON batiments(personnel_id)",
+            [],
+        )?;
+
+        // Index pour les recherches de semaines par batiment
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semaines_batiment_id ON semaines(batiment_id)",
             [],
         )?;
 

@@ -6,6 +6,7 @@
 pub mod ferme;
 pub mod personnel;
 pub mod bande;
+pub mod batiment;
 pub mod semaine;
 pub mod suivi_quotidien;
 pub mod soin;
@@ -15,6 +16,7 @@ pub mod user;
 pub use ferme::*;
 pub use personnel::*;
 pub use bande::*;
+pub use batiment::*;
 pub use semaine::*;
 pub use suivi_quotidien::*;
 pub use soin::*;

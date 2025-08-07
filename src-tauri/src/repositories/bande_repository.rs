@@ -1,35 +1,18 @@
-// Placeholder for bande repository - will be implemented after services
-use crate::database::DatabaseManager;
-use crate::error::{AppError, AppResult};
-use crate::models::{Bande, BandeWithDetails, CreateBande, UpdateBande};
-use std::sync::Arc;
+use crate::error::AppError;
+use crate::models::{Bande, BandeWithDetails, BatimentWithDetails, CreateBande, UpdateBande};
+use r2d2::PooledConnection;
+use r2d2_sqlite::SqliteConnectionManager;
 
-pub trait BandeRepositoryTrait: Send + Sync {
-    async fn create(&self, bande: CreateBande) -> AppResult<Bande>;
-    async fn get_all(&self) -> AppResult<Vec<BandeWithDetails>>;
-    async fn get_by_id(&self, id: i64) -> AppResult<BandeWithDetails>;
-    async fn update(&self, bande: UpdateBande) -> AppResult<Bande>;
-    async fn delete(&self, id: i64) -> AppResult<()>;
-    async fn get_by_ferme(&self, ferme_id: i64) -> AppResult<Vec<BandeWithDetails>>;
-    async fn get_by_personnel(&self, personnel_id: i64) -> AppResult<Vec<BandeWithDetails>>;
-    async fn get_available_batiments(&self, ferme_id: i64) -> AppResult<Vec<String>>;
-}
-
-pub struct BandeRepository {
-    db: Arc<DatabaseManager>,
-}
+/// Repository for managing bandes
+pub struct BandeRepository;
 
 impl BandeRepository {
-    pub fn new(db: Arc<DatabaseManager>) -> Self {
-        Self { db }
-    }
-}
-
-impl BandeRepositoryTrait for BandeRepository {
-    async fn create(&self, bande: CreateBande) -> AppResult<Bande> {
-        let conn = self.db.get_connection()?;
-        
-        // Validation des clés étrangères
+    /// Create a new bande
+    pub fn create(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        bande: &CreateBande,
+    ) -> Result<Bande, AppError> {
+        // Validation de la ferme
         let ferme_exists: i64 = conn.query_row(
             "SELECT COUNT(*) FROM fermes WHERE id = ?1",
             [bande.ferme_id],
@@ -43,30 +26,12 @@ impl BandeRepositoryTrait for BandeRepository {
             ));
         }
 
-        let personnel_exists: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM personnel WHERE id = ?1", 
-            [bande.personnel_id],
-            |row| row.get(0),
-        )?;
-
-        if personnel_exists == 0 {
-            return Err(AppError::validation_error(
-                "personnel_id", 
-                "Le personnel spécifié n'existe pas"
-            ));
-        }
-
         // Insertion de la bande
         conn.execute(
-            "INSERT INTO bandes (date_entree, quantite, ferme_id, numero_batiment, type_poussin, personnel_id, notes) 
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO bandes (date_entree, ferme_id, notes) VALUES (?1, ?2, ?3)",
             [
                 &bande.date_entree.to_string(),
-                &bande.quantite.to_string(),
                 &bande.ferme_id.to_string(),
-                &bande.numero_batiment,
-                &bande.type_poussin,
-                &bande.personnel_id.to_string(),
                 &bande.notes.as_ref().unwrap_or(&String::new()),
             ],
         )?;
@@ -75,86 +40,143 @@ impl BandeRepositoryTrait for BandeRepository {
 
         Ok(Bande {
             id: Some(id),
-            date_entree: bande.date_entree,
-            quantite: bande.quantite,
+            date_entree: bande.date_entree.clone(),
             ferme_id: bande.ferme_id,
-            numero_batiment: bande.numero_batiment,
-            type_poussin: bande.type_poussin,
-            personnel_id: bande.personnel_id,
-            notes: bande.notes,
+            notes: bande.notes.clone(),
         })
     }
 
-    async fn get_all(&self) -> AppResult<Vec<BandeWithDetails>> {
-        let conn = self.db.get_connection()?;
-        
+    /// Get all bandes with their batiments
+    pub fn get_all(
+        conn: &PooledConnection<SqliteConnectionManager>,
+    ) -> Result<Vec<BandeWithDetails>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT b.id, b.date_entree, b.quantite, b.ferme_id, f.nom as ferme_nom,
-                    b.numero_batiment, b.type_poussin, b.personnel_id, p.nom as personnel_nom, b.notes
+            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
-             JOIN personnel p ON b.personnel_id = p.id
              ORDER BY b.date_entree DESC"
         )?;
         
-        let bandes = stmt.query_map([], |row| {
-            Ok(BandeWithDetails {
-                id: Some(row.get(0)?),
-                date_entree: row.get::<_, String>(1)?.parse().map_err(|_| {
-                    rusqlite::Error::InvalidColumnType(1, "date".to_string(), rusqlite::types::Type::Text)
-                })?,
-                quantite: row.get(2)?,
-                ferme_id: row.get(3)?,
-                ferme_nom: row.get(4)?,
-                numero_batiment: row.get(5)?,
-                type_poussin: row.get(6)?,
-                personnel_id: row.get(7)?,
-                personnel_nom: row.get(8)?,
-                notes: row.get(9)?,
-            })
+        let bandes_result = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
+
+        let mut bandes = Vec::new();
+        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+            let date_entree = date_entree_str.parse().map_err(|_| {
+                AppError::business_logic("Format de date invalide dans la base de données")
+            })?;
+            let batiments = Self::load_batiments(conn, id)?;
+            bandes.push(BandeWithDetails {
+                id: Some(id),
+                date_entree,
+                ferme_id,
+                ferme_nom,
+                notes,
+                batiments,
+            });
+        }
 
         Ok(bandes)
     }
 
-    async fn get_by_id(&self, id: i64) -> AppResult<BandeWithDetails> {
-        let conn = self.db.get_connection()?;
-        
-        let bande = conn.query_row(
-            "SELECT b.id, b.date_entree, b.quantite, b.ferme_id, f.nom as ferme_nom,
-                    b.numero_batiment, b.type_poussin, b.personnel_id, p.nom as personnel_nom, b.notes
+    /// Get bandes by ferme with their batiments
+    pub fn get_by_ferme(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        ferme_id: i64,
+    ) -> Result<Vec<BandeWithDetails>, AppError> {
+        let mut stmt = conn.prepare(
+            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
-             JOIN personnel p ON b.personnel_id = p.id
-             WHERE b.id = ?1",
-            [id],
-            |row| Ok(BandeWithDetails {
-                id: Some(row.get(0)?),
-                date_entree: row.get::<_, String>(1)?.parse().map_err(|_| {
-                    rusqlite::Error::InvalidColumnType(1, "date".to_string(), rusqlite::types::Type::Text)
-                })?,
-                quantite: row.get(2)?,
-                ferme_id: row.get(3)?,
-                ferme_nom: row.get(4)?,
-                numero_batiment: row.get(5)?,
-                type_poussin: row.get(6)?,
-                personnel_id: row.get(7)?,
-                personnel_nom: row.get(8)?,
-                notes: row.get(9)?,
-            }),
-        ).map_err(|e| match e {
-            rusqlite::Error::QueryReturnedNoRows => AppError::not_found("Bande", id),
-            _ => AppError::from(e),
-        })?;
+             WHERE b.ferme_id = ?1
+             ORDER BY b.date_entree DESC"
+        )?;
+        
+        let bandes_result = stmt.query_map([ferme_id], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(bande)
+        let mut bandes = Vec::new();
+        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+            let date_entree = date_entree_str.parse().map_err(|_| {
+                AppError::business_logic("Format de date invalide dans la base de données")
+            })?;
+            let batiments = Self::load_batiments(conn, id)?;
+            bandes.push(BandeWithDetails {
+                id: Some(id),
+                date_entree,
+                ferme_id,
+                ferme_nom,
+                notes,
+                batiments,
+            });
+        }
+
+        Ok(bandes)
     }
 
-    async fn update(&self, bande: UpdateBande) -> AppResult<Bande> {
-        let conn = self.db.get_connection()?;
-        
-        // Validation des clés étrangères
+    /// Get a bande by ID with its batiments
+    pub fn get_by_id(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        id: i64,
+    ) -> Result<Option<BandeWithDetails>, AppError> {
+        let result = conn.query_row(
+            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+             FROM bandes b
+             JOIN fermes f ON b.ferme_id = f.id
+             WHERE b.id = ?1",
+            [id],
+            |row| Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            )),
+        );
+
+        match result {
+            Ok((id, date_entree_str, ferme_id, ferme_nom, notes)) => {
+                let date_entree = date_entree_str.parse().map_err(|_| {
+                    AppError::business_logic("Format de date invalide dans la base de données")
+                })?;
+                let batiments = Self::load_batiments(conn, id)?;
+                Ok(Some(BandeWithDetails {
+                    id: Some(id),
+                    date_entree,
+                    ferme_id,
+                    ferme_nom,
+                    notes,
+                    batiments,
+                }))
+            }
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(AppError::from(e)),
+        }
+    }
+
+    /// Update a bande
+    pub fn update(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        id: i64,
+        bande: &UpdateBande,
+    ) -> Result<(), AppError> {
+        // Validation de la ferme
         let ferme_exists: i64 = conn.query_row(
             "SELECT COUNT(*) FROM fermes WHERE id = ?1",
             [bande.ferme_id],
@@ -168,54 +190,29 @@ impl BandeRepositoryTrait for BandeRepository {
             ));
         }
 
-        let personnel_exists: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM personnel WHERE id = ?1",
-            [bande.personnel_id],
-            |row| row.get(0),
-        )?;
-
-        if personnel_exists == 0 {
-            return Err(AppError::validation_error(
-                "personnel_id",
-                "Le personnel spécifié n'existe pas"
-            ));
-        }
-
         // Mise à jour de la bande
         let rows_affected = conn.execute(
-            "UPDATE bandes SET date_entree = ?1, quantite = ?2, ferme_id = ?3, numero_batiment = ?4, 
-                               type_poussin = ?5, personnel_id = ?6, notes = ?7 WHERE id = ?8",
+            "UPDATE bandes SET date_entree = ?1, ferme_id = ?2, notes = ?3 WHERE id = ?4",
             [
                 &bande.date_entree.to_string(),
-                &bande.quantite.to_string(),
                 &bande.ferme_id.to_string(),
-                &bande.numero_batiment,
-                &bande.type_poussin,
-                &bande.personnel_id.to_string(),
                 &bande.notes.as_ref().unwrap_or(&String::new()),
-                &bande.id.to_string(),
+                &id.to_string(),
             ],
         )?;
 
         if rows_affected == 0 {
-            return Err(AppError::not_found("Bande", bande.id));
+            return Err(AppError::not_found("Bande", id));
         }
 
-        Ok(Bande {
-            id: Some(bande.id),
-            date_entree: bande.date_entree,
-            quantite: bande.quantite,
-            ferme_id: bande.ferme_id,
-            numero_batiment: bande.numero_batiment,
-            type_poussin: bande.type_poussin,
-            personnel_id: bande.personnel_id,
-            notes: bande.notes,
-        })
+        Ok(())
     }
 
-    async fn delete(&self, id: i64) -> AppResult<()> {
-        let conn = self.db.get_connection()?;
-        
+    /// Delete a bande (will cascade delete batiments)
+    pub fn delete(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        id: i64,
+    ) -> Result<(), AppError> {
         // La suppression en cascade est gérée par les contraintes FK
         let rows_affected = conn.execute(
             "DELETE FROM bandes WHERE id = ?1",
@@ -229,78 +226,12 @@ impl BandeRepositoryTrait for BandeRepository {
         Ok(())
     }
 
-    async fn get_by_ferme(&self, ferme_id: i64) -> AppResult<Vec<BandeWithDetails>> {
-        let conn = self.db.get_connection()?;
-        
-        let mut stmt = conn.prepare(
-            "SELECT b.id, b.date_entree, b.quantite, b.ferme_id, f.nom as ferme_nom,
-                    b.numero_batiment, b.type_poussin, b.personnel_id, p.nom as personnel_nom, b.notes
-             FROM bandes b
-             JOIN fermes f ON b.ferme_id = f.id
-             JOIN personnel p ON b.personnel_id = p.id
-             WHERE b.ferme_id = ?1
-             ORDER BY b.date_entree DESC"
-        )?;
-        
-        let bandes = stmt.query_map([ferme_id], |row| {
-            Ok(BandeWithDetails {
-                id: Some(row.get(0)?),
-                date_entree: row.get::<_, String>(1)?.parse().map_err(|_| {
-                    rusqlite::Error::InvalidColumnType(1, "date".to_string(), rusqlite::types::Type::Text)
-                })?,
-                quantite: row.get(2)?,
-                ferme_id: row.get(3)?,
-                ferme_nom: row.get(4)?,
-                numero_batiment: row.get(5)?,
-                type_poussin: row.get(6)?,
-                personnel_id: row.get(7)?,
-                personnel_nom: row.get(8)?,
-                notes: row.get(9)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(bandes)
-    }
-
-    async fn get_by_personnel(&self, personnel_id: i64) -> AppResult<Vec<BandeWithDetails>> {
-        let conn = self.db.get_connection()?;
-        
-        let mut stmt = conn.prepare(
-            "SELECT b.id, b.date_entree, b.quantite, b.ferme_id, f.nom as ferme_nom,
-                    b.numero_batiment, b.type_poussin, b.personnel_id, p.nom as personnel_nom, b.notes
-             FROM bandes b
-             JOIN fermes f ON b.ferme_id = f.id
-             JOIN personnel p ON b.personnel_id = p.id
-             WHERE b.personnel_id = ?1
-             ORDER BY b.date_entree DESC"
-        )?;
-        
-        let bandes = stmt.query_map([personnel_id], |row| {
-            Ok(BandeWithDetails {
-                id: Some(row.get(0)?),
-                date_entree: row.get::<_, String>(1)?.parse().map_err(|_| {
-                    rusqlite::Error::InvalidColumnType(1, "date".to_string(), rusqlite::types::Type::Text)
-                })?,
-                quantite: row.get(2)?,
-                ferme_id: row.get(3)?,
-                ferme_nom: row.get(4)?,
-                numero_batiment: row.get(5)?,
-                type_poussin: row.get(6)?,
-                personnel_id: row.get(7)?,
-                personnel_nom: row.get(8)?,
-                notes: row.get(9)?,
-            })
-        })?
-        .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(bandes)
-    }
-
-    async fn get_available_batiments(&self, ferme_id: i64) -> AppResult<Vec<String>> {
-        let conn = self.db.get_connection()?;
-        
-        // First, get the number of meubles in the ferme
+    /// Get available batiment numbers for a ferme
+    pub fn get_available_batiments(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        ferme_id: i64,
+    ) -> Result<Vec<String>, AppError> {
+        // Get the number of meubles in the ferme
         let nbr_meuble: i32 = conn.query_row(
             "SELECT nbr_meuble FROM fermes WHERE id = ?1",
             [ferme_id],
@@ -310,25 +241,40 @@ impl BandeRepositoryTrait for BandeRepository {
             _ => AppError::from(e),
         })?;
 
-        // Get occupied batiments for this ferme
+        // Return all available batiment numbers (1 to nbr_meuble)
+        // Since bandes are historical records, all batiments can be reused for new bandes
+        let available: Vec<String> = (1..=nbr_meuble).map(|i| i.to_string()).collect();
+
+        Ok(available)
+    }
+
+    /// Load batiments for a bande
+    fn load_batiments(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        bande_id: i64,
+    ) -> Result<Vec<BatimentWithDetails>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT numero_batiment FROM bandes WHERE ferme_id = ?1"
+            "SELECT bat.id, bat.bande_id, bat.numero_batiment, bat.type_poussin,
+                    bat.personnel_id, p.nom as personnel_nom, bat.quantite
+             FROM batiments bat
+             JOIN personnel p ON bat.personnel_id = p.id
+             WHERE bat.bande_id = ?1
+             ORDER BY bat.numero_batiment"
         )?;
         
-        let occupied_batiments: Vec<String> = stmt.query_map([ferme_id], |row| {
-            Ok(row.get::<_, String>(0)?)
+        let batiments = stmt.query_map([bande_id], |row| {
+            Ok(BatimentWithDetails {
+                id: Some(row.get(0)?),
+                bande_id: row.get(1)?,
+                numero_batiment: row.get(2)?,
+                type_poussin: row.get(3)?,
+                personnel_id: row.get(4)?,
+                personnel_nom: row.get(5)?,
+                quantite: row.get(6)?,
+            })
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
-        // Generate available batiments (1 to nbr_meuble, excluding occupied ones)
-        let mut available_batiments = Vec::new();
-        for i in 1..=nbr_meuble {
-            let batiment_num = i.to_string();
-            if !occupied_batiments.contains(&batiment_num) {
-                available_batiments.push(batiment_num);
-            }
-        }
-
-        Ok(available_batiments)
+        Ok(batiments)
     }
 }

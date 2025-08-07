@@ -10,7 +10,7 @@ pub trait SemaineRepositoryTrait: Send + Sync {
     async fn get_by_id(&self, id: i64) -> AppResult<Semaine>;
     async fn update(&self, semaine: UpdateSemaine) -> AppResult<Semaine>;
     async fn delete(&self, id: i64) -> AppResult<()>;
-    async fn get_by_bande(&self, bande_id: i64) -> AppResult<Vec<Semaine>>;
+    async fn get_by_batiment(&self, batiment_id: i64) -> AppResult<Vec<Semaine>>;
 }
 
 pub struct SemaineRepository {
@@ -27,25 +27,25 @@ impl SemaineRepositoryTrait for SemaineRepository {
     async fn create(&self, semaine: CreateSemaine) -> AppResult<Semaine> {
         let conn = self.db.get_connection()?;
         
-        // Vérifier que la bande existe
-        let bande_exists: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM bandes WHERE id = ?1",
-            [semaine.bande_id],
+        // Vérifier que le bâtiment existe
+        let batiment_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM batiments WHERE id = ?1",
+            [semaine.batiment_id],
             |row| row.get(0),
         )?;
 
-        if bande_exists == 0 {
+        if batiment_exists == 0 {
             return Err(AppError::validation_error(
-                "bande_id",
-                "La bande spécifiée n'existe pas"
+                "batiment_id",
+                "Le bâtiment spécifié n'existe pas"
             ));
         }
 
         // Insertion de la semaine
         conn.execute(
-            "INSERT INTO semaines (bande_id, numero_semaine, poids) VALUES (?1, ?2, ?3)",
+            "INSERT INTO semaines (batiment_id, numero_semaine, poids) VALUES (?1, ?2, ?3)",
             [
-                &semaine.bande_id.to_string(),
+                &semaine.batiment_id.to_string(),
                 &semaine.numero_semaine.to_string(),
                 &semaine.poids.map(|p| p.to_string()).unwrap_or_default(),
             ],
@@ -55,7 +55,7 @@ impl SemaineRepositoryTrait for SemaineRepository {
 
         Ok(Semaine {
             id: Some(id),
-            bande_id: semaine.bande_id,
+            batiment_id: semaine.batiment_id,
             numero_semaine: semaine.numero_semaine,
             poids: semaine.poids,
         })
@@ -64,12 +64,12 @@ impl SemaineRepositoryTrait for SemaineRepository {
     async fn get_all(&self) -> AppResult<Vec<Semaine>> {
         let conn = self.db.get_connection()?;
         
-        let mut stmt = conn.prepare("SELECT id, bande_id, numero_semaine, poids FROM semaines ORDER BY bande_id, numero_semaine")?;
+        let mut stmt = conn.prepare("SELECT id, batiment_id, numero_semaine, poids FROM semaines ORDER BY batiment_id, numero_semaine")?;
         
         let semaines = stmt.query_map([], |row| {
             Ok(Semaine {
                 id: Some(row.get(0)?),
-                bande_id: row.get(1)?,
+                batiment_id: row.get(1)?,
                 numero_semaine: row.get(2)?,
                 poids: row.get(3)?,
             })
@@ -83,11 +83,11 @@ impl SemaineRepositoryTrait for SemaineRepository {
         let conn = self.db.get_connection()?;
         
         let semaine = conn.query_row(
-            "SELECT id, bande_id, numero_semaine, poids FROM semaines WHERE id = ?1",
+            "SELECT id, batiment_id, numero_semaine, poids FROM semaines WHERE id = ?1",
             [id],
             |row| Ok(Semaine {
                 id: Some(row.get(0)?),
-                bande_id: row.get(1)?,
+                batiment_id: row.get(1)?,
                 numero_semaine: row.get(2)?,
                 poids: row.get(3)?,
             }),
@@ -102,25 +102,25 @@ impl SemaineRepositoryTrait for SemaineRepository {
     async fn update(&self, semaine: UpdateSemaine) -> AppResult<Semaine> {
         let conn = self.db.get_connection()?;
         
-        // Vérifier que la bande existe
-        let bande_exists: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM bandes WHERE id = ?1",
-            [semaine.bande_id],
+        // Vérifier que le bâtiment existe
+        let batiment_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM batiments WHERE id = ?1",
+            [semaine.batiment_id],
             |row| row.get(0),
         )?;
 
-        if bande_exists == 0 {
+        if batiment_exists == 0 {
             return Err(AppError::validation_error(
-                "bande_id",
-                "La bande spécifiée n'existe pas"
+                "batiment_id",
+                "Le bâtiment spécifié n'existe pas"
             ));
         }
 
         // Mise à jour de la semaine
         let rows_affected = conn.execute(
-            "UPDATE semaines SET bande_id = ?1, numero_semaine = ?2, poids = ?3 WHERE id = ?4",
+            "UPDATE semaines SET batiment_id = ?1, numero_semaine = ?2, poids = ?3 WHERE id = ?4",
             [
-                &semaine.bande_id.to_string(),
+                &semaine.batiment_id.to_string(),
                 &semaine.numero_semaine.to_string(),
                 &semaine.poids.map(|p| p.to_string()).unwrap_or_default(),
                 &semaine.id.to_string(),
@@ -133,7 +133,7 @@ impl SemaineRepositoryTrait for SemaineRepository {
 
         Ok(Semaine {
             id: Some(semaine.id),
-            bande_id: semaine.bande_id,
+            batiment_id: semaine.batiment_id,
             numero_semaine: semaine.numero_semaine,
             poids: semaine.poids,
         })
@@ -155,17 +155,17 @@ impl SemaineRepositoryTrait for SemaineRepository {
         Ok(())
     }
 
-    async fn get_by_bande(&self, bande_id: i64) -> AppResult<Vec<Semaine>> {
+    async fn get_by_batiment(&self, batiment_id: i64) -> AppResult<Vec<Semaine>> {
         let conn = self.db.get_connection()?;
         
         let mut stmt = conn.prepare(
-            "SELECT id, bande_id, numero_semaine, poids FROM semaines WHERE bande_id = ?1 ORDER BY numero_semaine"
+            "SELECT id, batiment_id, numero_semaine, poids FROM semaines WHERE batiment_id = ?1 ORDER BY numero_semaine"
         )?;
         
-        let semaines = stmt.query_map([bande_id], |row| {
+        let semaines = stmt.query_map([batiment_id], |row| {
             Ok(Semaine {
                 id: Some(row.get(0)?),
-                bande_id: row.get(1)?,
+                batiment_id: row.get(1)?,
                 numero_semaine: row.get(2)?,
                 poids: row.get(3)?,
             })

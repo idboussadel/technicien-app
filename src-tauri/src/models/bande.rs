@@ -1,19 +1,16 @@
 use serde::{Deserialize, Serialize};
 use chrono::NaiveDate;
+use crate::models::BatimentWithDetails;
 
 /// Représente une bande d'animaux dans le système
 /// 
-/// Une bande est l'unité principale de gestion qui contient
-/// les animaux et fait l'objet d'un suivi quotidien et hebdomadaire.
+/// Une bande est l'unité principale de gestion qui peut contenir
+/// plusieurs bâtiments, chacun faisant l'objet d'un suivi séparé.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bande {
     pub id: Option<i64>,
     pub date_entree: NaiveDate,
-    pub quantite: i32,
     pub ferme_id: i64,
-    pub numero_batiment: String,
-    pub type_poussin: String,
-    pub personnel_id: i64,
     pub notes: Option<String>,
 }
 
@@ -24,11 +21,7 @@ pub struct Bande {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateBande {
     pub date_entree: NaiveDate,
-    pub quantite: i32,
     pub ferme_id: i64,
-    pub numero_batiment: String,
-    pub type_poussin: String,
-    pub personnel_id: i64,
     pub notes: Option<String>,
 }
 
@@ -40,28 +33,20 @@ pub struct CreateBande {
 pub struct UpdateBande {
     pub id: i64,
     pub date_entree: NaiveDate,
-    pub quantite: i32,
     pub ferme_id: i64,
-    pub numero_batiment: String,
-    pub type_poussin: String,
-    pub personnel_id: i64,
     pub notes: Option<String>,
 }
 
 /// Vue étendue d'une bande avec les informations des entités liées
 /// 
-/// Inclut les noms de la ferme et du personnel pour un affichage complet
-/// sans nécessiter de requêtes supplémentaires côté frontend.
+/// Inclut les noms de la ferme et la liste des bâtiments
+/// pour un affichage complet sans requêtes supplémentaires côté frontend.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BandeWithDetails {
     pub id: Option<i64>,
     pub date_entree: NaiveDate,
-    pub quantite: i32,
     pub ferme_id: i64,
     pub ferme_nom: String,
-    pub numero_batiment: String,
-    pub type_poussin: String,
-    pub personnel_id: i64,
-    pub personnel_nom: String,
     pub notes: Option<String>,
+    pub batiments: Vec<BatimentWithDetails>,
 }

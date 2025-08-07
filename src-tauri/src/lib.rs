@@ -77,6 +77,13 @@ pub fn run() {
             commands::update_bande,
             commands::delete_bande,
             commands::get_available_batiments,
+            // Batiment commands
+            commands::create_batiment,
+            commands::get_batiments_by_bande,
+            commands::get_batiment_by_id,
+            commands::update_batiment,
+            commands::delete_batiment,
+            commands::get_available_batiment_numbers,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
