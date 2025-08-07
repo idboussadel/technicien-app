@@ -9,12 +9,8 @@ import Fermes from "./pages/fermes/Fermes";
 import ResponsableFerme from "./pages/personnel/ResponsableFerme";
 import Medicaments from "./pages/medicaments/Medicaments";
 import ProfilePage from "./pages/profile/ProfilePage";
+import { Ferme } from "@/types";
 import "./App.css";
-
-interface Ferme {
-  id: number;
-  nom: string;
-}
 
 interface NavItem {
   id: string;
@@ -47,11 +43,6 @@ function AuthenticatedApp() {
     try {
       const result = await invoke<Ferme[]>("get_all_fermes");
       setFermes(result);
-
-      // Si aucune ferme n'est sélectionnée et qu'il y a des fermes, sélectionner la première
-      if (!selectedFerme && result.length > 0) {
-        setSelectedFerme(result[0]);
-      }
     } catch (error) {
       console.error("Impossible de charger les fermes:", error);
     }
@@ -106,7 +97,6 @@ function AuthenticatedApp() {
                 selectedFerme={selectedFerme}
                 isCreateDialogOpen={isCreateDialogOpen}
                 setIsCreateDialogOpen={setIsCreateDialogOpen}
-                onFermesUpdate={loadFermes}
                 onFermeSelect={handleFermeChange}
                 onBackToFermes={handleBackToFermes}
               />

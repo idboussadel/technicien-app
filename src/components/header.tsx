@@ -11,11 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAuth } from "@/contexts/AuthContext";
-
-interface Ferme {
-  id: number;
-  nom: string;
-}
+import { Ferme } from "@/types";
 
 interface NavItem {
   id: string;
