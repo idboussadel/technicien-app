@@ -271,12 +271,12 @@ export default function Fermes({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Nombre de meubles <span className="text-red-600">*</span>
+                          Nombre de bâtiments <span className="text-red-600">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            placeholder="Entrez le nombre de meubles"
+                            placeholder="Entrez le nombre de bâtiments"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                             value={field.value === 0 ? "" : field.value}
@@ -379,7 +379,7 @@ export default function Fermes({
                           {ferme.nom}
                         </h3>
                         <p className="text-sm text-white/70">
-                          {ferme.nbr_meuble} meuble{ferme.nbr_meuble !== 1 ? "s" : ""}
+                          {ferme.nbr_meuble} bâtiment{ferme.nbr_meuble !== 1 ? "s" : ""}
                         </p>
                       </div>
                     </div>

@@ -1,17 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Plus,
-  Building2,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Users,
-  Home,
-  ArrowLeft,
-} from "lucide-react";
+import { Plus, Building2, MoreHorizontal, Edit, Trash2, ArrowLeft, Calendar } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import toast from "react-hot-toast";
 import CreateBandeModal from "./create-bande-modal";
+import BatimentsView from "./Batiments";
 import { Ferme, Personnel, BandeWithDetails } from "@/types";
 
 interface BandesPageProps {
@@ -31,6 +22,7 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
   // State for bandes
   const [bandes, setBandes] = useState<BandeWithDetails[]>([]);
   const [isBandesLoading, setIsBandesLoading] = useState(false);
+  const [selectedBande, setSelectedBande] = useState<BandeWithDetails | null>(null);
 
   // State for create bande modal
   const [isCreateBandeDialogOpen, setIsCreateBandeDialogOpen] = useState(false);
@@ -96,21 +88,51 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
     setIsCreateBandeDialogOpen(true);
   };
 
+  /**
+   * Handle selecting a bande to view its batiments
+   */
+  const handleBandeSelect = (bande: BandeWithDetails) => {
+    setSelectedBande(bande);
+  };
+
+  /**
+   * Handle going back to bandes list
+   */
+  const handleBackToBandes = () => {
+    setSelectedBande(null);
+  };
+
   // Load bandes when component mounts or ferme changes
   useEffect(() => {
     loadBandes(ferme.id);
   }, [ferme.id]);
 
+  // If a bande is selected, show the batiments view
+  if (selectedBande) {
+    return (
+      <BatimentsView
+        bande={selectedBande}
+        ferme={ferme}
+        onBackToBandes={handleBackToBandes}
+        onBackToFermes={onBackToFermes}
+      />
+    );
+  }
+
+  // Main view - bandes list
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="container mx-auto px-6 py-6">
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={onBackToFermes}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Retour
-            </Button>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" onClick={onBackToFermes}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Retour aux fermes
+              </Button>
+              <h1 className="text-2xl font-bold">Bandes de {ferme.nom}</h1>
+            </div>
             <Button onClick={handleOpenCreateModal}>
               <Plus className="mr-2 h-4 w-4" />
               Nouvelle bande
@@ -118,9 +140,7 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
           </div>
 
           {/* Bandes List */}
-          <Card className="p-6">
-            <h3 className="text-xl font-semibold mb-4">Bandes de {ferme.nom}</h3>
-
+          <div className="space-y-4">
             {isBandesLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -128,45 +148,81 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
             ) : bandes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-                <h4 className="text-lg font-semibold mb-2">Aucune bande</h4>
+                <h3 className="text-xl font-semibold mb-2 text-foreground">Aucune bande</h3>
                 <p className="text-muted-foreground text-center mb-6 max-w-md">
                   Cette ferme n'a pas encore de bandes. Créez la première bande pour commencer.
                 </p>
-                <Button onClick={handleOpenCreateModal}>
+                <Button
+                  onClick={handleOpenCreateModal}
+                  className="bg-foreground hover:bg-foreground/90"
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Créer la première bande
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
+                {/* Bande Cards - Horizontal Layout */}
                 {bandes.map((bande) => (
-                  <Card key={bande.id} className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h4 className="text-lg font-semibold">
-                          Bande du {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
-                        </h4>
-                        {bande.notes && (
-                          <p className="text-sm text-muted-foreground mt-1">{bande.notes}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          {bande.batiments.length} bâtiment
-                          {bande.batiments.length !== 1 ? "s" : ""}
-                        </span>
+                  <div
+                    key={bande.id}
+                    className="group cursor-pointer"
+                    onClick={() => handleBandeSelect(bande)}
+                  >
+                    <div className="border border-border rounded-lg p-4 bg-white hover:bg-gray-50 transition-all duration-200 hover:shadow-md">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-5 w-5 text-primary" />
+                            <h3 className="text-lg font-semibold">Bande #{bande.id}</h3>
+                          </div>
+
+                          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                            <span>
+                              Entrée: {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
+                            </span>
+                            <span>
+                              {bande.batiments.length} bâtiment
+                              {bande.batiments.length !== 1 ? "s" : ""}
+                            </span>
+                            {bande.notes && (
+                              <span className="max-w-xs truncate">Notes: {bande.notes}</span>
+                            )}
+                          </div>
+                        </div>
+
                         <DropdownMenu>
-                          <DropdownMenuTrigger>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="rounded-md hover:bg-gray-100 focus:bg-accent text-muted-foreground h-8 w-8 p-0"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Handle edit
+                              }}
+                              className="cursor-pointer"
+                            >
                               <Edit className="w-4 h-4 mr-2" />
                               Modifier
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // TODO: Handle delete
+                              }}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Supprimer
                             </DropdownMenuItem>
@@ -174,60 +230,11 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
                         </DropdownMenu>
                       </div>
                     </div>
-
-                    {/* Batiments Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {bande.batiments.map((batiment, index) => (
-                        <div
-                          key={batiment.id || index}
-                          className="border rounded-lg p-4 bg-gray-50"
-                        >
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <Home className="h-4 w-4 text-primary" />
-                              <span className="font-medium">
-                                Bâtiment {batiment.numero_batiment}
-                              </span>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                  <MoreHorizontal className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem>
-                                  <Edit className="w-3 h-3 mr-2" />
-                                  Modifier
-                                </DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
-                                  <Trash2 className="w-3 h-3 mr-2" />
-                                  Supprimer
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2">
-                              <Users className="h-3 w-3 text-muted-foreground" />
-                              <span>
-                                {batiment.quantite} {batiment.type_poussin}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">Responsable: </span>
-                              <span className="font-medium">{batiment.personnel_nom}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
+                  </div>
                 ))}
               </div>
             )}
-          </Card>
+          </div>
 
           {/* Create Bande Modal */}
           {isCreateBandeDialogOpen && (
