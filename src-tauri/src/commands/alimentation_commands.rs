@@ -1,12 +1,13 @@
 use crate::database::DatabaseManager;
 use crate::models::alimentation::{AlimentationHistory, CreateAlimentationHistory, UpdateAlimentationHistory};
 use crate::repositories::AlimentationRepository;
+use std::sync::Arc;
 use tauri::State;
 
 /// Create a new alimentation history record
 #[tauri::command]
 pub async fn create_alimentation_history(
-    database: State<'_, DatabaseManager>,
+    database: State<'_, Arc<DatabaseManager>>,
     alimentation_data: CreateAlimentationHistory,
 ) -> Result<AlimentationHistory, String> {
     let conn = database.get_connection().map_err(|e| e.to_string())?;
@@ -16,7 +17,7 @@ pub async fn create_alimentation_history(
 /// Get all alimentation history for a specific bande
 #[tauri::command]
 pub async fn get_alimentation_history_by_bande(
-    database: State<'_, DatabaseManager>,
+    database: State<'_, Arc<DatabaseManager>>,
     bande_id: i64,
 ) -> Result<Vec<AlimentationHistory>, String> {
     let conn = database.get_connection().map_err(|e| e.to_string())?;
@@ -26,7 +27,7 @@ pub async fn get_alimentation_history_by_bande(
 /// Get a specific alimentation history record by ID
 #[tauri::command]
 pub async fn get_alimentation_history_by_id(
-    database: State<'_, DatabaseManager>,
+    database: State<'_, Arc<DatabaseManager>>,
     id: i64,
 ) -> Result<Option<AlimentationHistory>, String> {
     let conn = database.get_connection().map_err(|e| e.to_string())?;
@@ -36,7 +37,7 @@ pub async fn get_alimentation_history_by_id(
 /// Update an alimentation history record
 #[tauri::command]
 pub async fn update_alimentation_history(
-    database: State<'_, DatabaseManager>,
+    database: State<'_, Arc<DatabaseManager>>,
     id: i64,
     alimentation_data: UpdateAlimentationHistory,
 ) -> Result<(), String> {
@@ -47,7 +48,7 @@ pub async fn update_alimentation_history(
 /// Delete an alimentation history record
 #[tauri::command]
 pub async fn delete_alimentation_history(
-    database: State<'_, DatabaseManager>,
+    database: State<'_, Arc<DatabaseManager>>,
     id: i64,
 ) -> Result<(), String> {
     let conn = database.get_connection().map_err(|e| e.to_string())?;
@@ -57,7 +58,7 @@ pub async fn delete_alimentation_history(
 /// Get the current alimentation contour for a specific bande
 #[tauri::command]
 pub async fn get_alimentation_contour(
-    database: State<'_, DatabaseManager>,
+    database: State<'_, Arc<DatabaseManager>>,
     bande_id: i64,
 ) -> Result<f64, String> {
     let conn = database.get_connection().map_err(|e| e.to_string())?;

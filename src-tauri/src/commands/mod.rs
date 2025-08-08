@@ -10,6 +10,7 @@ pub mod auth_commands;
 pub mod bande_commands;
 pub mod batiment_commands;
 pub mod alimentation_commands;
+pub mod maladie_commands;
 
 // Re-export all commands for easy access
 pub use ferme_commands::*;
@@ -19,3 +20,4 @@ pub use auth_commands::*;
 pub use bande_commands::*;
 pub use batiment_commands::*;
 pub use alimentation_commands::*;
+pub use maladie_commands::*;

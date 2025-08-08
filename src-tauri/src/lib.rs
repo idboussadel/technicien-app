@@ -91,6 +91,12 @@ pub fn run() {
             commands::update_alimentation_history,
             commands::delete_alimentation_history,
             commands::get_alimentation_contour,
+            // Maladie commands
+            commands::create_maladie,
+            commands::get_maladies,
+            commands::get_maladies_list,
+            commands::update_maladie,
+            commands::delete_maladie,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

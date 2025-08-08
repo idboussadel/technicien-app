@@ -8,8 +8,9 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Fermes from "./pages/fermes/Fermes";
 import ResponsableFerme from "./pages/personnel/ResponsableFerme";
 import Medicaments from "./pages/medicaments/Medicaments";
+import Maladies from "./pages/maladies/Maladies";
 import ProfilePage from "./pages/profile/ProfilePage";
-import { Ferme } from "@/types";
+import { Ferme, BandeWithDetails } from "@/types";
 import "./App.css";
 
 interface NavItem {
@@ -24,8 +25,11 @@ interface NavItem {
 function AuthenticatedApp() {
   const [fermes, setFermes] = useState<Ferme[]>([]);
   const [selectedFerme, setSelectedFerme] = useState<Ferme | null>(null);
+  const [bandes, setBandes] = useState<BandeWithDetails[]>([]);
+  const [selectedBande, setSelectedBande] = useState<BandeWithDetails | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [currentView, setCurrentView] = useState<"ferme" | "bande" | "batiment">("ferme");
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -34,6 +38,7 @@ function AuthenticatedApp() {
     { id: "fermes", label: "Fermes", path: "/fermes" },
     { id: "responsable", label: "Responsable ferme", path: "/responsable" },
     { id: "medicaments", label: "Médicaments", path: "/medicaments" },
+    { id: "maladies", label: "Maladies", path: "/maladies" },
   ];
 
   /**
@@ -48,8 +53,30 @@ function AuthenticatedApp() {
     }
   };
 
+  /**
+   * Charge les bandes d'une ferme spécifique
+   */
+  const loadBandes = async (fermeId: number) => {
+    try {
+      const result = await invoke<BandeWithDetails[]>("get_bandes_by_ferme", { fermeId });
+      setBandes(result);
+    } catch (error) {
+      console.error("Impossible de charger les bandes:", error);
+      setBandes([]);
+    }
+  };
+
   const handleFermeChange = (ferme: Ferme) => {
     setSelectedFerme(ferme);
+
+    // Charger les bandes de la ferme sélectionnée
+    loadBandes(ferme.id);
+
+    // Réinitialiser la bande sélectionnée
+    setSelectedBande(null);
+
+    // Passer au niveau bandes
+    setCurrentView("bande");
   };
 
   const handleNewFerme = () => {
@@ -58,6 +85,19 @@ function AuthenticatedApp() {
 
   const handleBackToFermes = () => {
     setSelectedFerme(null);
+    setSelectedBande(null);
+    setBandes([]);
+    setCurrentView("ferme"); // Back to ferme view
+  };
+
+  const handleBandeChange = (bande: BandeWithDetails) => {
+    setSelectedBande(bande);
+    setCurrentView("batiment"); // When a bande is selected, we go to batiment view
+  };
+
+  const handleBackToBandes = () => {
+    setSelectedBande(null);
+    setCurrentView("bande"); // Back to bande view
   };
 
   const handleAccountClick = () => {
@@ -79,8 +119,14 @@ function AuthenticatedApp() {
         fermes={fermes}
         selectedFerme={selectedFerme}
         onFermeChange={handleFermeChange}
+        bandes={bandes}
+        selectedBande={selectedBande}
+        onBandeChange={handleBandeChange}
         onNewFerme={handleNewFerme}
-        showFermeSelector={location.pathname.startsWith("/fermes")}
+        onRefreshFermes={loadFermes}
+        onRefreshBandes={() => selectedFerme && loadBandes(selectedFerme.id)}
+        showBreadcrumb={location.pathname.startsWith("/fermes")}
+        breadcrumbLevel={currentView}
         navItems={navItems}
         searchValue={searchValue}
         onSearchChange={handleSearchChange}
@@ -99,11 +145,19 @@ function AuthenticatedApp() {
                 setIsCreateDialogOpen={setIsCreateDialogOpen}
                 onFermeSelect={handleFermeChange}
                 onBackToFermes={handleBackToFermes}
+                bandes={bandes}
+                selectedBande={selectedBande}
+                onBandeSelect={handleBandeChange}
+                onBackToBandes={handleBackToBandes}
+                currentView={currentView}
+                onRefreshFermes={loadFermes}
+                onRefreshBandes={() => selectedFerme && loadBandes(selectedFerme.id)}
               />
             }
           />
           <Route path="/responsable" element={<ResponsableFerme />} />
           <Route path="/medicaments" element={<Medicaments />} />
+          <Route path="/maladies" element={<Maladies />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </main>

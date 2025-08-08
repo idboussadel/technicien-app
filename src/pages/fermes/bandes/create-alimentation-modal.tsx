@@ -140,7 +140,6 @@ export default function AlimentationModal({
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Form Section */}
           <div>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(addAlimentation)} className="space-y-4">

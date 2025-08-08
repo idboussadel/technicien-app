@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Check, Plus, Search, User, LogOut } from "lucide-react";
+import { Check, Search, User, LogOut, ChevronRight, Slash, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAuth } from "@/contexts/AuthContext";
-import { Ferme } from "@/types";
+import { Ferme, BandeWithDetails } from "@/types";
 
 interface NavItem {
   id: string;
@@ -23,8 +23,14 @@ interface HeaderProps {
   fermes: Ferme[];
   selectedFerme: Ferme | null;
   onFermeChange: (ferme: Ferme) => void;
+  bandes?: BandeWithDetails[];
+  selectedBande?: BandeWithDetails | null;
+  onBandeChange?: (bande: BandeWithDetails) => void;
   onNewFerme?: () => void;
-  showFermeSelector?: boolean;
+  onRefreshFermes?: () => void;
+  onRefreshBandes?: () => void;
+  showBreadcrumb?: boolean;
+  breadcrumbLevel?: "ferme" | "bande" | "batiment";
   navItems: NavItem[];
   searchValue: string;
   onSearchChange: (value: string) => void;
@@ -35,8 +41,14 @@ export default function Header({
   fermes,
   selectedFerme,
   onFermeChange,
+  bandes = [],
+  selectedBande,
+  onBandeChange,
   onNewFerme,
-  showFermeSelector = false,
+  onRefreshFermes,
+  onRefreshBandes,
+  showBreadcrumb = false,
+  breadcrumbLevel = "ferme",
   navItems,
   searchValue,
   onSearchChange,
@@ -47,14 +59,6 @@ export default function Header({
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { user, logout } = useAuth();
-
-  const handleNewFerme = () => {
-    if (onNewFerme) {
-      onNewFerme();
-    } else {
-      console.log("New ferme clicked");
-    }
-  };
 
   const handleSignOut = async () => {
     await logout();
@@ -137,61 +141,84 @@ export default function Header({
               className="w-8 h-8 object-contain p-1 border rounded-md"
             />
 
-            {/* Ferme Selector - Only show on ferme-related pages */}
-            {showFermeSelector && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors group">
-                    <span className="font-medium">
-                      {selectedFerme ? selectedFerme.nom : "Sélectionner une ferme"}
-                    </span>
-                    <svg
-                      className="w-4 h-4 transition-transform group-data-[state=open]:rotate-180"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64 p-1">
-                  {fermes.map((ferme) => (
-                    <DropdownMenuItem
-                      key={ferme.id}
-                      onClick={() => onFermeChange(ferme)}
-                      className="cursor-pointer flex items-center justify-between p-3"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="w-6 h-6">
-                          <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-xs font-medium">
-                            {ferme.nom.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-foreground">{ferme.nom}</span>
-                      </div>
-                      {selectedFerme?.id === ferme.id && (
-                        <Check className="w-4 h-4 text-muted-foreground" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                  <div className="border-t border-border mt-1 pt-1">
-                    <DropdownMenuItem onClick={handleNewFerme} className="cursor-pointer p-3">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-6 h-6 rounded-full border-2 border-dashed border-border flex items-center justify-center">
-                          <Plus className="w-3 h-3 text-muted-foreground" />
-                        </div>
-                        <span className="font-medium text-blue-600">Nouvelle ferme</span>
-                      </div>
-                    </DropdownMenuItem>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            {/* Breadcrumb Navigation */}
+            {showBreadcrumb && (
+              <div className="flex items-center space-x-2 text-sm">
+                {/* Ferme Selector */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex cursor-pointer capitalize items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
+                      <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                        {selectedFerme ? selectedFerme.nom : "Sélectionner une ferme"}
+                      </span>
+                      <ChevronsUpDown className="w-3 h-3 flex-shrink-0" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56 p-1">
+                    {fermes.map((ferme) => (
+                      <DropdownMenuItem
+                        key={ferme.id}
+                        onClick={() => onFermeChange(ferme)}
+                        className="cursor-pointer flex items-center justify-between p-2"
+                      >
+                        <p className="font-medium capitalize text-foreground">{ferme.nom}</p>
+                        {selectedFerme?.id === ferme.id && (
+                          <Check className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Show separator and bande selector if we're at bande level or deeper */}
+                {breadcrumbLevel !== "ferme" && (
+                  <>
+                    <Slash className="w-3 h-3 text-muted-foreground" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="flex cursor-pointer items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
+                          <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                            {selectedBande ? `Bande ${selectedBande.id}` : "Sélectionner une bande"}
+                          </span>
+                          <ChevronsUpDown className="w-3 h-3 flex-shrink-0" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-56 p-1">
+                        {bandes.map((bande) => (
+                          <DropdownMenuItem
+                            key={bande.id}
+                            onClick={() => onBandeChange?.(bande)}
+                            className="cursor-pointer flex items-center justify-between p-2"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
+                                <span className="text-xs font-medium text-blue-600">
+                                  {bande.id}
+                                </span>
+                              </div>
+                              <span className="font-medium text-foreground">
+                                Bande {bande.id} -{" "}
+                                {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
+                              </span>
+                            </div>
+                            {selectedBande?.id === bande.id && (
+                              <Check className="w-3 h-3 text-muted-foreground" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+
+                {/* Show separator and batiments text if we're at batiment level */}
+                {breadcrumbLevel === "batiment" && (
+                  <>
+                    <Slash className="w-3 h-3 text-muted-foreground" />
+                    <span className="font-medium text-foreground">Bâtiments</span>
+                  </>
+                )}
+              </div>
             )}
           </div>
 

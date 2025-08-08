@@ -12,6 +12,7 @@ pub mod suivi_quotidien_repository;
 pub mod soin_repository;
 pub mod user_repository;
 pub mod alimentation_repository;
+pub mod maladie_repository;
 
 // Re-export all repositories for easy access
 pub use ferme_repository::*;
@@ -23,3 +24,4 @@ pub use suivi_quotidien_repository::*;
 pub use soin_repository::*;
 pub use user_repository::*;
 pub use alimentation_repository::*;
+pub use maladie_repository::*;

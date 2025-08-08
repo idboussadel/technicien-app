@@ -10,15 +10,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import toast from "react-hot-toast";
 import CreateBandeModal from "./create-bande-modal";
-import BatimentsView from "./Batiments";
+import BatimentsView from "./batiments/Batiments";
 import { Ferme, Personnel, BandeWithDetails } from "@/types";
 
 interface BandesPageProps {
   ferme: Ferme;
   onBackToFermes: () => void;
+  onRefreshBandes?: () => void;
 }
 
-export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
+export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: BandesPageProps) {
   // State for bandes
   const [bandes, setBandes] = useState<BandeWithDetails[]>([]);
   const [isBandesLoading, setIsBandesLoading] = useState(false);
@@ -77,6 +78,8 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
   const handleBandeCreated = async () => {
     await loadBandes(ferme.id);
     await loadAvailableBatiments(ferme.id);
+    // Refresh parent state to update breadcrumb
+    onRefreshBandes?.();
   };
 
   /**
@@ -126,13 +129,10 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={onBackToFermes}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour aux fermes
-              </Button>
-              <h1 className="text-2xl font-bold">Bandes de {ferme.nom}</h1>
-            </div>
+            <Button variant="outline" onClick={onBackToFermes}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour aux fermes
+            </Button>
             <Button onClick={handleOpenCreateModal}>
               <Plus className="mr-2 h-4 w-4" />
               Nouvelle bande
@@ -169,7 +169,7 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
                     className="group cursor-pointer"
                     onClick={() => handleBandeSelect(bande)}
                   >
-                    <div className="border border-border rounded-lg p-4 bg-white hover:bg-gray-50 transition-all duration-200 hover:shadow-md">
+                    <div className="border border-border rounded-md p-4 bg-white transition-all duration-200 hover:shadow-md">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
@@ -195,7 +195,7 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
                         </div>
 
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger>
                             <Button
                               variant="ghost"
                               size="sm"

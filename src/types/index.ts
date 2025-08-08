@@ -85,23 +85,17 @@ export interface AlimentationHistory {
   id: number | null;
   bande_id: number;
   quantite: number;
-  date_alimentation: string;
-  notes: string | null;
+  created_at: string;
 }
 
 export interface CreateAlimentationHistory {
   bande_id: number;
   quantite: number;
-  date_alimentation: string;
-  notes: string | null;
 }
 
 export interface UpdateAlimentationHistory {
-  id: number;
   bande_id: number;
   quantite: number;
-  date_alimentation: string;
-  notes: string | null;
 }
 
 export interface BandeWithAlimentationDetails {
@@ -136,4 +130,30 @@ export interface UpdateFerme {
   id: number;
   nom: string;
   nbr_meuble: number;
+}
+
+// Maladie interfaces
+export interface Maladie {
+  id: number;
+  nom: string;
+  created_at: string;
+}
+
+export interface CreateMaladie {
+  nom: string;
+}
+
+export interface UpdateMaladie {
+  id: number;
+  nom: string;
+}
+
+export interface PaginatedMaladies {
+  data: Maladie[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }

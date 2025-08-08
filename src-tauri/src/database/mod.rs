@@ -181,6 +181,16 @@ impl DatabaseManager {
             [],
         )?;
 
+        // Création de la table maladies
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS maladies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nom TEXT NOT NULL UNIQUE,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
         // Création des index pour optimiser les performances
         self.create_indexes(&conn)?;
 
@@ -267,6 +277,18 @@ impl DatabaseManager {
         // Index composite pour les recherches par bande et date de création
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_alimentation_history_bande_created ON alimentation_history(bande_id, created_at)",
+            [],
+        )?;
+
+        // Index pour les recherches de maladies par nom
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_maladies_nom ON maladies(nom)",
+            [],
+        )?;
+
+        // Index pour les recherches de maladies par date de création
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_maladies_created_at ON maladies(created_at)",
             [],
         )?;
 

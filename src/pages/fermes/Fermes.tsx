@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Building2, MoreHorizontal, Edit, Trash2 } from "lucide-react";
@@ -41,7 +40,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import Bandes from "./bandes/Bandes";
-import { Ferme, CreateFerme, UpdateFerme } from "@/types";
+import { Ferme, CreateFerme, UpdateFerme, BandeWithDetails } from "@/types";
 
 interface FermesPageProps {
   selectedFerme: Ferme | null;
@@ -49,6 +48,13 @@ interface FermesPageProps {
   setIsCreateDialogOpen: (open: boolean) => void;
   onFermeSelect: (ferme: Ferme) => void;
   onBackToFermes: () => void;
+  bandes: BandeWithDetails[];
+  selectedBande: BandeWithDetails | null;
+  onBandeSelect: (bande: BandeWithDetails) => void;
+  onBackToBandes: () => void;
+  currentView: "ferme" | "bande" | "batiment";
+  onRefreshFermes?: () => void;
+  onRefreshBandes?: () => void;
 }
 
 // Form validation schema
@@ -73,6 +79,13 @@ export default function Fermes({
   setIsCreateDialogOpen,
   onFermeSelect,
   onBackToFermes,
+  bandes,
+  selectedBande,
+  onBandeSelect,
+  onBackToBandes,
+  currentView,
+  onRefreshFermes,
+  onRefreshBandes,
 }: FermesPageProps) {
   const [fermes, setFermes] = useState<Ferme[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -139,8 +152,9 @@ export default function Fermes({
 
       form.reset();
       setIsCreateDialogOpen(false);
-      // Reload the farms list locally instead of calling onFermesUpdate
+      // Refresh both local and parent state
       await loadFermes();
+      onRefreshFermes?.();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error : "Impossible de créer la ferme";
       toast.error(errorMessage);
@@ -181,6 +195,7 @@ export default function Fermes({
       setIsEditDialogOpen(false);
       setEditingFerme(null);
       await loadFermes();
+      onRefreshFermes?.();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error : "Impossible de modifier la ferme";
       toast.error(errorMessage);
@@ -211,6 +226,7 @@ export default function Fermes({
       setIsDeleteDialogOpen(false);
       setDeletingFerme(null);
       await loadFermes();
+      onRefreshFermes?.();
     } catch (error) {
       const errorMessage = typeof error === "string" ? error : "Impossible de supprimer la ferme";
       toast.error(errorMessage);
@@ -226,7 +242,13 @@ export default function Fermes({
 
   // If a farm is selected, show the Bandes component
   if (selectedFerme) {
-    return <Bandes ferme={selectedFerme} onBackToFermes={onBackToFermes} />;
+    return (
+      <Bandes
+        ferme={selectedFerme}
+        onBackToFermes={onBackToFermes}
+        onRefreshBandes={onRefreshBandes}
+      />
+    );
   }
 
   // Main view - farms list

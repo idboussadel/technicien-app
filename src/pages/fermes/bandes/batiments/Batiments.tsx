@@ -8,7 +8,6 @@ import {
   Users,
   Home,
   ArrowLeft,
-  Calendar,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -17,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Ferme, BandeWithDetails } from "@/types";
+import { AlimentationHistoryList } from "@/components/alimentation/alimentation-history-list";
 
 interface BatimentsViewProps {
   bande: BandeWithDetails;
@@ -25,12 +25,7 @@ interface BatimentsViewProps {
   onBackToFermes: () => void;
 }
 
-export default function BatimentsView({
-  bande,
-  ferme,
-  onBackToBandes,
-  onBackToFermes,
-}: BatimentsViewProps) {
+export default function BatimentsView({ bande, ferme, onBackToBandes }: BatimentsViewProps) {
   const handleCreateBatiment = () => {
     // TODO: Implement create batiment functionality
     console.log("Create new batiment");
@@ -52,22 +47,11 @@ export default function BatimentsView({
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={onBackToBandes}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Retour aux bandes
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold">Bâtiments - Bande #{bande.id}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {ferme.nom} • Entrée: {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
-                </p>
-              </div>
-            </div>
+            <Button variant="outline" onClick={onBackToBandes}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Retour aux bandes
+            </Button>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={onBackToFermes}>
-                Retour aux fermes
-              </Button>
               <Button onClick={handleCreateBatiment}>
                 <Plus className="mr-2 h-4 w-4" />
                 Nouveau bâtiment
@@ -75,24 +59,10 @@ export default function BatimentsView({
             </div>
           </div>
 
-          {/* Bande Info Card */}
-          <div className="bg-white rounded-lg border p-4">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-primary" />
-              <div>
-                <h3 className="font-semibold">Informations de la bande</h3>
-                <p className="text-sm text-muted-foreground">
-                  Date d'entrée: {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
-                </p>
-                {bande.notes && (
-                  <p className="text-sm text-muted-foreground mt-1">Notes: {bande.notes}</p>
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Alimentation Section */}
+          <AlimentationHistoryList bandeId={bande.id!} />
 
-          {/* Batiments List */}
-          <main className="py-3 px-4">
+          <main>
             {bande.batiments.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
