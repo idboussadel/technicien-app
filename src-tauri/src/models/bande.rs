@@ -39,7 +39,7 @@ pub struct UpdateBande {
 
 /// Vue étendue d'une bande avec les informations des entités liées
 /// 
-/// Inclut les noms de la ferme et la liste des bâtiments
+/// Inclut les noms de la ferme, la liste des bâtiments et le contour d'alimentation
 /// pour un affichage complet sans requêtes supplémentaires côté frontend.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BandeWithDetails {
@@ -49,4 +49,5 @@ pub struct BandeWithDetails {
     pub ferme_nom: String,
     pub notes: Option<String>,
     pub batiments: Vec<BatimentWithDetails>,
+    pub alimentation_contour: f64,  // Total accumulation d'alimentation en kg
 }

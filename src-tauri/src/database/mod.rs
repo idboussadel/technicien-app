@@ -114,6 +114,7 @@ impl DatabaseManager {
                 date_entree DATE NOT NULL,
                 ferme_id INTEGER NOT NULL,
                 notes TEXT,
+                alimentation_contour REAL NOT NULL DEFAULT 0.0,
                 FOREIGN KEY (ferme_id) REFERENCES fermes(id) ON DELETE RESTRICT
             )",
             [],
@@ -164,6 +165,18 @@ impl DatabaseManager {
                 FOREIGN KEY (semaine_id) REFERENCES semaines(id) ON DELETE CASCADE,
                 FOREIGN KEY (soins_id) REFERENCES soins(id) ON DELETE SET NULL,
                 UNIQUE(semaine_id, age)
+            )",
+            [],
+        )?;
+
+        // Création de la table alimentation_history
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS alimentation_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                bande_id INTEGER NOT NULL,
+                quantite REAL NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (bande_id) REFERENCES bandes(id) ON DELETE CASCADE
             )",
             [],
         )?;
@@ -236,6 +249,24 @@ impl DatabaseManager {
         // Index pour les recherches de soins
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_suivi_quotidien_soins_id ON suivi_quotidien(soins_id)",
+            [],
+        )?;
+
+        // Index pour les recherches d'alimentation par bande
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_alimentation_history_bande_id ON alimentation_history(bande_id)",
+            [],
+        )?;
+
+        // Index pour les recherches d'alimentation par date de création
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_alimentation_history_created_at ON alimentation_history(created_at)",
+            [],
+        )?;
+
+        // Index composite pour les recherches par bande et date de création
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_alimentation_history_bande_created ON alimentation_history(bande_id, created_at)",
             [],
         )?;
 

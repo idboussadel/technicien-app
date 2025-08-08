@@ -84,6 +84,13 @@ pub fn run() {
             commands::update_batiment,
             commands::delete_batiment,
             commands::get_available_batiment_numbers,
+            // Alimentation commands
+            commands::create_alimentation_history,
+            commands::get_alimentation_history_by_bande,
+            commands::get_alimentation_history_by_id,
+            commands::update_alimentation_history,
+            commands::delete_alimentation_history,
+            commands::get_alimentation_contour,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

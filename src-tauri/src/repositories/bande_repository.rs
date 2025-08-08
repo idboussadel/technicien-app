@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use crate::models::{Bande, BandeWithDetails, BatimentWithDetails, CreateBande, UpdateBande};
+use crate::repositories::AlimentationRepository;
 use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
 
@@ -74,6 +75,7 @@ impl BandeRepository {
                 AppError::business_logic("Format de date invalide dans la base de données")
             })?;
             let batiments = Self::load_batiments(conn, id)?;
+            let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
             bandes.push(BandeWithDetails {
                 id: Some(id),
                 date_entree,
@@ -81,6 +83,7 @@ impl BandeRepository {
                 ferme_nom,
                 notes,
                 batiments,
+                alimentation_contour,
             });
         }
 
@@ -117,6 +120,7 @@ impl BandeRepository {
                 AppError::business_logic("Format de date invalide dans la base de données")
             })?;
             let batiments = Self::load_batiments(conn, id)?;
+            let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
             bandes.push(BandeWithDetails {
                 id: Some(id),
                 date_entree,
@@ -124,6 +128,7 @@ impl BandeRepository {
                 ferme_nom,
                 notes,
                 batiments,
+                alimentation_contour,
             });
         }
 
@@ -156,6 +161,7 @@ impl BandeRepository {
                     AppError::business_logic("Format de date invalide dans la base de données")
                 })?;
                 let batiments = Self::load_batiments(conn, id)?;
+                let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
                 Ok(Some(BandeWithDetails {
                     id: Some(id),
                     date_entree,
@@ -163,6 +169,7 @@ impl BandeRepository {
                     ferme_nom,
                     notes,
                     batiments,
+                    alimentation_contour,
                 }))
             }
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),

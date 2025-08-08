@@ -77,6 +77,42 @@ export interface BandeWithDetails {
   ferme_nom: string;
   notes: string | null;
   batiments: BatimentWithDetails[];
+  alimentation_contour: number;
+}
+
+// Alimentation interfaces
+export interface AlimentationHistory {
+  id: number | null;
+  bande_id: number;
+  quantite: number;
+  date_alimentation: string;
+  notes: string | null;
+}
+
+export interface CreateAlimentationHistory {
+  bande_id: number;
+  quantite: number;
+  date_alimentation: string;
+  notes: string | null;
+}
+
+export interface UpdateAlimentationHistory {
+  id: number;
+  bande_id: number;
+  quantite: number;
+  date_alimentation: string;
+  notes: string | null;
+}
+
+export interface BandeWithAlimentationDetails {
+  id: number | null;
+  date_entree: string;
+  ferme_id: number;
+  ferme_nom: string;
+  notes: string | null;
+  batiments: BatimentWithDetails[];
+  alimentation_contour: number;
+  alimentation_history: AlimentationHistory[];
 }
 
 // Legacy interfaces for backward compatibility (will be removed)

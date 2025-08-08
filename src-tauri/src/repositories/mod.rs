@@ -11,6 +11,7 @@ pub mod semaine_repository;
 pub mod suivi_quotidien_repository;
 pub mod soin_repository;
 pub mod user_repository;
+pub mod alimentation_repository;
 
 // Re-export all repositories for easy access
 pub use ferme_repository::*;
@@ -21,3 +22,4 @@ pub use semaine_repository::*;
 pub use suivi_quotidien_repository::*;
 pub use soin_repository::*;
 pub use user_repository::*;
+pub use alimentation_repository::*;

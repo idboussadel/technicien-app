@@ -185,6 +185,9 @@ export default function Bandes({ ferme, onBackToFermes }: BandesPageProps) {
                               {bande.batiments.length} bâtiment
                               {bande.batiments.length !== 1 ? "s" : ""}
                             </span>
+                            <span className="font-medium text-blue-600">
+                              Alimentation: {bande.alimentation_contour || 0} kg
+                            </span>
                             {bande.notes && (
                               <span className="max-w-xs truncate">Notes: {bande.notes}</span>
                             )}
