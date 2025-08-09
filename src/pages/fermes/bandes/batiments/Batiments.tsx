@@ -51,12 +51,6 @@ export default function BatimentsView({ bande, ferme, onBackToBandes }: Batiment
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour aux bandes
             </Button>
-            <div className="flex items-center gap-2">
-              <Button onClick={handleCreateBatiment}>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouveau bâtiment
-              </Button>
-            </div>
           </div>
 
           {/* Alimentation Section */}
@@ -79,19 +73,45 @@ export default function BatimentsView({ bande, ferme, onBackToBandes }: Batiment
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {/* Batiment Cards */}
+              <div className="space-y-4">
+                {/* Batiment List */}
                 {bande.batiments.map((batiment, index) => (
-                  <div key={batiment.id || index} className="group">
-                    <div className="border border-border rounded-xl p-6 transition-all duration-200 aspect-[4/3] bg-white hover:bg-gray-50 flex flex-col justify-between relative hover:shadow-md">
+                  <div
+                    key={batiment.id || index}
+                    className="bg-white border border-border rounded-lg p-6 hover:shadow-sm transition-shadow"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-3">
+                          <Home className="h-5 w-5 text-primary" />
+                          <div>
+                            <h3 className="font-semibold text-lg">
+                              Bâtiment {batiment.numero_batiment}
+                            </h3>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span>
+                              {batiment.quantite} {batiment.poussin_nom}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-muted-foreground">Responsable: </span>
+                            <span className="font-medium text-foreground">
+                              {batiment.personnel_nom}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="absolute rounded-md hover:bg-gray-100 focus:bg-accent top-4 right-4 text-muted-foreground h-8 w-8 p-0 z-10"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
@@ -111,60 +131,9 @@ export default function BatimentsView({ bande, ferme, onBackToBandes }: Batiment
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-
-                      <div className="flex-1 flex flex-col items-center justify-center">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Home className="h-6 w-6 text-primary" />
-                          <h3 className="text-lg font-bold text-center">
-                            Bâtiment {batiment.numero_batiment}
-                          </h3>
-                        </div>
-
-                        <div className="space-y-2 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">
-                              {batiment.quantite} {batiment.type_poussin}
-                            </span>
-                          </div>
-
-                          <div className="text-xs text-muted-foreground">
-                            <span className="block">Responsable:</span>
-                            <span className="font-medium text-foreground">
-                              {batiment.personnel_nom}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-gray-100">
-                        <div className="flex justify-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditBatiment(batiment.id)}
-                            className="text-xs px-3 py-1"
-                          >
-                            Modifier
-                          </Button>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 ))}
-
-                {/* Add New Batiment Card */}
-                <div className="group cursor-pointer">
-                  <div
-                    className="border-2 border-dashed border-border rounded-xl p-6 hover:border-muted-foreground hover:bg-muted/50 transition-all duration-200 aspect-[4/3] flex flex-col items-center justify-center"
-                    onClick={handleCreateBatiment}
-                  >
-                    <Plus className="w-8 h-8 text-muted-foreground mb-3 group-hover:text-foreground transition-colors" />
-                    <span className="text-muted-foreground font-medium group-hover:text-foreground transition-colors">
-                      Nouveau bâtiment
-                    </span>
-                  </div>
-                </div>
               </div>
             )}
           </main>

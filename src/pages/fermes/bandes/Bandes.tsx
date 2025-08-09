@@ -1,7 +1,16 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
-import { Plus, Building2, MoreHorizontal, Edit, Trash2, ArrowLeft, Calendar } from "lucide-react";
+import {
+  Plus,
+  Building2,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  ArrowLeft,
+  CalendarDays,
+  Building,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,33 +20,66 @@ import {
 import toast from "react-hot-toast";
 import CreateBandeModal from "./create-bande-modal";
 import BatimentsView from "./batiments/Batiments";
-import { Ferme, Personnel, BandeWithDetails } from "@/types";
+import { Ferme, Personnel, BandeWithDetails, Poussin, PaginatedBandes } from "@/types";
+import { DataPagination } from "@/components/ui/data-pagination";
 
 interface BandesPageProps {
   ferme: Ferme;
+  selectedBande?: BandeWithDetails | null;
+  onBandeSelect?: (bande: BandeWithDetails) => void;
   onBackToFermes: () => void;
   onRefreshBandes?: () => void;
 }
 
-export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: BandesPageProps) {
+export default function Bandes({
+  ferme,
+  selectedBande: parentSelectedBande,
+  onBandeSelect,
+  onBackToFermes,
+  onRefreshBandes,
+}: BandesPageProps) {
   // State for bandes
   const [bandes, setBandes] = useState<BandeWithDetails[]>([]);
   const [isBandesLoading, setIsBandesLoading] = useState(false);
   const [selectedBande, setSelectedBande] = useState<BandeWithDetails | null>(null);
 
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    total_pages: 0,
+    has_next: false,
+    has_prev: false,
+  });
+
   // State for create bande modal
   const [isCreateBandeDialogOpen, setIsCreateBandeDialogOpen] = useState(false);
   const [personnel, setPersonnel] = useState<Personnel[]>([]);
+  const [poussins, setPoussins] = useState<Poussin[]>([]);
   const [availableBatiments, setAvailableBatiments] = useState<string[]>([]);
 
   /**
-   * Charge les bandes d'une ferme spécifique
+   * Charge les bandes d'une ferme spécifique avec pagination
    */
-  const loadBandes = async (fermeId: number) => {
+  const loadBandes = async (fermeId: number, page: number = 1, perPage?: number) => {
     try {
       setIsBandesLoading(true);
-      const result = await invoke<BandeWithDetails[]>("get_bandes_by_ferme", { fermeId });
-      setBandes(result);
+      const result = await invoke<PaginatedBandes>("get_bandes_by_ferme_paginated", {
+        fermeId,
+        page,
+        perPage: perPage || pagination.limit,
+      });
+      setBandes(result.data);
+      setPagination((prev) => ({
+        ...prev,
+        page: result.page,
+        limit: perPage || prev.limit,
+        total: result.total,
+        total_pages: result.total_pages,
+        has_next: result.has_next,
+        has_prev: result.has_prev,
+      }));
     } catch (error) {
       toast.error("Impossible de charger les bandes");
       console.error("Impossible de charger les bandes:", error);
@@ -60,6 +102,19 @@ export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: Bande
   };
 
   /**
+   * Charge la liste des poussins
+   */
+  const loadPoussins = async () => {
+    try {
+      const result = await invoke<Poussin[]>("get_poussin_list");
+      setPoussins(result);
+    } catch (error) {
+      toast.error("Impossible de charger les poussins");
+      console.error("Impossible de charger les poussins:", error);
+    }
+  };
+
+  /**
    * Charge les bâtiments disponibles pour une ferme
    */
   const loadAvailableBatiments = async (fermeId: number) => {
@@ -76,10 +131,26 @@ export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: Bande
    * Callback when a bande is created successfully
    */
   const handleBandeCreated = async () => {
-    await loadBandes(ferme.id);
+    await loadBandes(ferme.id, pagination.page);
     await loadAvailableBatiments(ferme.id);
     // Refresh parent state to update breadcrumb
     onRefreshBandes?.();
+  };
+
+  /**
+   * Handle page change
+   */
+  const handlePageChange = (page: number) => {
+    loadBandes(ferme.id, page);
+  };
+
+  /**
+   * Handle page size change
+   */
+  const handlePageSizeChange = (newPageSize: string) => {
+    const newLimit = parseInt(newPageSize);
+    setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
+    loadBandes(ferme.id, 1, newLimit);
   };
 
   /**
@@ -87,6 +158,7 @@ export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: Bande
    */
   const handleOpenCreateModal = async () => {
     await loadPersonnel();
+    await loadPoussins();
     await loadAvailableBatiments(ferme.id);
     setIsCreateBandeDialogOpen(true);
   };
@@ -96,6 +168,8 @@ export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: Bande
    */
   const handleBandeSelect = (bande: BandeWithDetails) => {
     setSelectedBande(bande);
+    // Notify parent component about the selection
+    onBandeSelect?.(bande);
   };
 
   /**
@@ -109,6 +183,11 @@ export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: Bande
   useEffect(() => {
     loadBandes(ferme.id);
   }, [ferme.id]);
+
+  // Synchronize with parent's selectedBande
+  useEffect(() => {
+    setSelectedBande(parentSelectedBande || null);
+  }, [parentSelectedBande]);
 
   // If a bande is selected, show the batiments view
   if (selectedBande) {
@@ -162,79 +241,100 @@ export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: Bande
               </div>
             ) : (
               <div className="space-y-3">
-                {/* Bande Cards - Horizontal Layout */}
+                {/* Bande Cards - New Design */}
                 {bandes.map((bande) => (
                   <div
                     key={bande.id}
-                    className="group cursor-pointer"
+                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900 cursor-pointer"
                     onClick={() => handleBandeSelect(bande)}
                   >
-                    <div className="border border-border rounded-md p-4 bg-white transition-all duration-200 hover:shadow-md">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-5 w-5 text-primary" />
-                            <h3 className="text-lg font-semibold">Bande #{bande.id}</h3>
-                          </div>
-
-                          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-shrink-0">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-semibold text-base">
+                          {bande.id}
+                        </span>
+                      </div>
+                      <div className="flex flex-col">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+                          Bande #{bande.id}
+                        </h3>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
+                          <div className="flex items-center gap-1">
+                            <CalendarDays className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                             <span>
                               Entrée: {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
                             </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Building className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                             <span>
                               {bande.batiments.length} bâtiment
                               {bande.batiments.length !== 1 ? "s" : ""}
                             </span>
-                            <span className="font-medium text-blue-600">
-                              Alimentation: {bande.alimentation_contour || 0} kg
-                            </span>
-                            {bande.notes && (
-                              <span className="max-w-xs truncate">Notes: {bande.notes}</span>
-                            )}
                           </div>
+                          {bande.notes && (
+                            <div className="max-w-xs truncate">
+                              <span>Notes: {bande.notes}</span>
+                            </div>
+                          )}
                         </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="rounded-md hover:bg-gray-100 focus:bg-accent text-muted-foreground h-8 w-8 p-0"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Handle edit
-                              }}
-                              className="cursor-pointer"
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Modifier
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // TODO: Handle delete
-                              }}
-                              className="cursor-pointer text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Supprimer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </div>
                     </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // TODO: Handle edit
+                          }}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // TODO: Handle delete
+                          }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {bandes.length > 0 && (
+              <div className="mt-6">
+                <DataPagination
+                  currentPage={pagination.page}
+                  totalPages={pagination.total_pages}
+                  hasNext={pagination.has_next}
+                  hasPrev={pagination.has_prev}
+                  total={pagination.total}
+                  perPage={pagination.limit}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
+                />
               </div>
             )}
           </div>
@@ -247,6 +347,7 @@ export default function Bandes({ ferme, onBackToFermes, onRefreshBandes }: Bande
               fermeId={ferme.id}
               fermeName={ferme.nom}
               personnel={personnel || []}
+              poussins={poussins || []}
               availableBatiments={availableBatiments || []}
               onBandeCreated={handleBandeCreated}
             />

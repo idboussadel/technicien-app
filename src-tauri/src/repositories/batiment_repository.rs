@@ -40,6 +40,19 @@ impl BatimentRepository {
             ));
         }
 
+        let poussin_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM poussins WHERE id = ?1", 
+            [batiment.poussin_id],
+            |row| row.get(0),
+        )?;
+
+        if poussin_exists == 0 {
+            return Err(AppError::validation_error(
+                "poussin_id", 
+                "Le poussin spécifié n'existe pas"
+            ));
+        }
+
         // Vérifier que le numéro de bâtiment n'est pas déjà utilisé dans la même bande
         let existing_batiment: i64 = conn.query_row(
             "SELECT COUNT(*) FROM batiments 
@@ -57,12 +70,12 @@ impl BatimentRepository {
 
         // Insertion du bâtiment
         conn.execute(
-            "INSERT INTO batiments (bande_id, numero_batiment, type_poussin, personnel_id, quantite) 
+            "INSERT INTO batiments (bande_id, numero_batiment, poussin_id, personnel_id, quantite) 
              VALUES (?1, ?2, ?3, ?4, ?5)",
             [
                 &batiment.bande_id.to_string(),
                 &batiment.numero_batiment,
-                &batiment.type_poussin,
+                &batiment.poussin_id.to_string(),
                 &batiment.personnel_id.to_string(),
                 &batiment.quantite.to_string(),
             ],
@@ -74,7 +87,7 @@ impl BatimentRepository {
             id: Some(id),
             bande_id: batiment.bande_id,
             numero_batiment: batiment.numero_batiment.clone(),
-            type_poussin: batiment.type_poussin.clone(),
+            poussin_id: batiment.poussin_id,
             personnel_id: batiment.personnel_id,
             quantite: batiment.quantite,
         })
@@ -86,10 +99,11 @@ impl BatimentRepository {
         bande_id: i64,
     ) -> Result<Vec<BatimentWithDetails>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT bat.id, bat.bande_id, bat.numero_batiment, bat.type_poussin,
-                    bat.personnel_id, p.nom as personnel_nom, bat.quantite
+            "SELECT bat.id, bat.bande_id, bat.numero_batiment, bat.poussin_id,
+                    pous.nom as poussin_nom, bat.personnel_id, p.nom as personnel_nom, bat.quantite
              FROM batiments bat
              JOIN personnel p ON bat.personnel_id = p.id
+             JOIN poussins pous ON bat.poussin_id = pous.id
              WHERE bat.bande_id = ?1
              ORDER BY bat.numero_batiment"
         )?;
@@ -99,10 +113,11 @@ impl BatimentRepository {
                 id: Some(row.get(0)?),
                 bande_id: row.get(1)?,
                 numero_batiment: row.get(2)?,
-                type_poussin: row.get(3)?,
-                personnel_id: row.get(4)?,
-                personnel_nom: row.get(5)?,
-                quantite: row.get(6)?,
+                poussin_id: row.get(3)?,
+                poussin_nom: row.get(4)?,
+                personnel_id: row.get(5)?,
+                personnel_nom: row.get(6)?,
+                quantite: row.get(7)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -116,20 +131,22 @@ impl BatimentRepository {
         id: i64,
     ) -> Result<Option<BatimentWithDetails>, AppError> {
         let result = conn.query_row(
-            "SELECT bat.id, bat.bande_id, bat.numero_batiment, bat.type_poussin,
-                    bat.personnel_id, p.nom as personnel_nom, bat.quantite
+            "SELECT bat.id, bat.bande_id, bat.numero_batiment, bat.poussin_id,
+                    pous.nom as poussin_nom, bat.personnel_id, p.nom as personnel_nom, bat.quantite
              FROM batiments bat
              JOIN personnel p ON bat.personnel_id = p.id
+             JOIN poussins pous ON bat.poussin_id = pous.id
              WHERE bat.id = ?1",
             [id],
             |row| Ok(BatimentWithDetails {
                 id: Some(row.get(0)?),
                 bande_id: row.get(1)?,
                 numero_batiment: row.get(2)?,
-                type_poussin: row.get(3)?,
-                personnel_id: row.get(4)?,
-                personnel_nom: row.get(5)?,
-                quantite: row.get(6)?,
+                poussin_id: row.get(3)?,
+                poussin_nom: row.get(4)?,
+                personnel_id: row.get(5)?,
+                personnel_nom: row.get(6)?,
+                quantite: row.get(7)?,
             }),
         );
 
@@ -160,6 +177,19 @@ impl BatimentRepository {
             ));
         }
 
+        let poussin_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM poussins WHERE id = ?1",
+            [batiment.poussin_id],
+            |row| row.get(0),
+        )?;
+
+        if poussin_exists == 0 {
+            return Err(AppError::validation_error(
+                "poussin_id",
+                "Le poussin spécifié n'existe pas"
+            ));
+        }
+
         let personnel_exists: i64 = conn.query_row(
             "SELECT COUNT(*) FROM personnel WHERE id = ?1",
             [batiment.personnel_id],
@@ -175,12 +205,12 @@ impl BatimentRepository {
 
         // Mise à jour du bâtiment
         let rows_affected = conn.execute(
-            "UPDATE batiments SET bande_id = ?1, numero_batiment = ?2, type_poussin = ?3, 
+            "UPDATE batiments SET bande_id = ?1, numero_batiment = ?2, poussin_id = ?3, 
                                   personnel_id = ?4, quantite = ?5 WHERE id = ?6",
             [
                 &batiment.bande_id.to_string(),
                 &batiment.numero_batiment,
-                &batiment.type_poussin,
+                &batiment.poussin_id.to_string(),
                 &batiment.personnel_id.to_string(),
                 &batiment.quantite.to_string(),
                 &id.to_string(),

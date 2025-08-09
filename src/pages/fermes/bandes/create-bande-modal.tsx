@@ -43,7 +43,7 @@ import { fr } from "date-fns/locale";
 import { CalendarIcon, Check, ChevronsUpDown, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
-import { Personnel, CreateBande, CreateBatiment } from "@/types";
+import { Personnel, CreateBande, CreateBatiment, Poussin } from "@/types";
 
 interface CreateBandeModalProps {
   isOpen: boolean;
@@ -51,13 +51,14 @@ interface CreateBandeModalProps {
   fermeId: number;
   fermeName: string;
   personnel?: Personnel[];
+  poussins?: Poussin[];
   availableBatiments?: string[];
   onBandeCreated: () => void;
 }
 
 const batimentSchema = z.object({
   numero_batiment: z.string().min(1, "Le numéro de bâtiment est obligatoire"),
-  type_poussin: z.string().min(1, "Le type de poussin est obligatoire"),
+  poussin_id: z.string().min(1, "Le poussin est obligatoire"),
   personnel_id: z.string().min(1, "Le personnel responsable est obligatoire"),
   quantite: z
     .number()
@@ -84,12 +85,14 @@ export default function CreateBandeModal({
   fermeId,
   fermeName,
   personnel = [],
+  poussins = [],
   availableBatiments = [],
   onBandeCreated,
 }: CreateBandeModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openCalendar, setOpenCalendar] = useState(false);
   const [openPersonnelIndex, setOpenPersonnelIndex] = useState<number | null>(null);
+  const [openPoussinIndex, setOpenPoussinIndex] = useState<number | null>(null);
 
   // Form setup with validation
   const form = useForm<CreateBandeForm>({
@@ -99,7 +102,7 @@ export default function CreateBandeModal({
       batiments: [
         {
           numero_batiment: "",
-          type_poussin: "",
+          poussin_id: "",
           personnel_id: "",
           quantite: 0,
         },
@@ -139,7 +142,7 @@ export default function CreateBandeModal({
         const createBatimentData: CreateBatiment = {
           bande_id: bande.id,
           numero_batiment: batimentData.numero_batiment,
-          type_poussin: batimentData.type_poussin,
+          poussin_id: parseInt(batimentData.poussin_id),
           personnel_id: parseInt(batimentData.personnel_id),
           quantite: batimentData.quantite,
         };
@@ -162,7 +165,7 @@ export default function CreateBandeModal({
   const addBatiment = () => {
     append({
       numero_batiment: "",
-      type_poussin: "",
+      poussin_id: "",
       personnel_id: "",
       quantite: 0,
     });
@@ -177,6 +180,7 @@ export default function CreateBandeModal({
   const handleClose = () => {
     form.reset();
     setOpenPersonnelIndex(null);
+    setOpenPoussinIndex(null);
     onClose();
   };
 
@@ -327,19 +331,75 @@ export default function CreateBandeModal({
                     />
                     <FormField
                       control={form.control}
-                      name={`batiments.${index}.type_poussin`}
-                      render={({ field }) => (
+                      name={`batiments.${index}.poussin_id`}
+                      render={({ field, fieldState }) => (
                         <FormItem>
                           <FormLabel>
-                            Type de poussin <span className="text-red-600">*</span>
+                            Poussin <span className="text-red-600">*</span>
                           </FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Ex: Poulet de chair"
-                              {...field}
-                              className="bg-white"
-                              disabled={isSubmitting}
-                            />
+                            <Popover
+                              open={openPoussinIndex === index}
+                              onOpenChange={(open) => setOpenPoussinIndex(open ? index : null)}
+                            >
+                              <PopoverTrigger>
+                                <Button
+                                  variant="outline"
+                                  role="combobox"
+                                  aria-expanded={openPoussinIndex === index}
+                                  aria-invalid={!!fieldState.error}
+                                  className={cn(
+                                    "w-full bg-white justify-between font-normal",
+                                    !field.value && "text-muted-foreground",
+                                    fieldState.error &&
+                                      "border-destructive focus-visible:ring-destructive/20"
+                                  )}
+                                  disabled={isSubmitting}
+                                  type="button"
+                                >
+                                  {field.value
+                                    ? poussins.find(
+                                        (poussin) => poussin.id?.toString() === field.value
+                                      )?.nom
+                                    : "Sélectionnez un poussin..."}
+                                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[300px] p-0" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Rechercher un poussin..." />
+                                  <CommandList>
+                                    <CommandEmpty>Aucun poussin trouvé.</CommandEmpty>
+                                    <CommandGroup>
+                                      {poussins && poussins.length > 0 ? (
+                                        poussins.map((poussin) => (
+                                          <CommandItem
+                                            key={poussin.id}
+                                            value={poussin.nom}
+                                            onSelect={() => {
+                                              field.onChange(poussin.id?.toString());
+                                              setOpenPoussinIndex(null);
+                                            }}
+                                          >
+                                            <Check
+                                              className={cn(
+                                                "mr-2 h-4 w-4",
+                                                field.value === poussin.id?.toString()
+                                                  ? "opacity-100"
+                                                  : "opacity-0"
+                                              )}
+                                            />
+                                            {poussin.nom}
+                                          </CommandItem>
+                                        ))
+                                      ) : (
+                                        <CommandItem disabled>Aucun poussin disponible</CommandItem>
+                                      )}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

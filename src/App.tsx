@@ -7,6 +7,7 @@ import Header from "./components/header";
 import Dashboard from "./pages/dashboard/Dashboard";
 import Fermes from "./pages/fermes/Fermes";
 import ResponsableFerme from "./pages/personnel/ResponsableFerme";
+import Poussins from "./pages/poussins/Poussins";
 import Medicaments from "./pages/medicaments/Medicaments";
 import Maladies from "./pages/maladies/Maladies";
 import ProfilePage from "./pages/profile/ProfilePage";
@@ -25,7 +26,7 @@ interface NavItem {
 function AuthenticatedApp() {
   const [fermes, setFermes] = useState<Ferme[]>([]);
   const [selectedFerme, setSelectedFerme] = useState<Ferme | null>(null);
-  const [bandes, setBandes] = useState<BandeWithDetails[]>([]);
+  const [latestBandes, setLatestBandes] = useState<BandeWithDetails[]>([]);
   const [selectedBande, setSelectedBande] = useState<BandeWithDetails | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
@@ -37,6 +38,7 @@ function AuthenticatedApp() {
     { id: "dashboard", label: "Dashboard", path: "/" },
     { id: "fermes", label: "Fermes", path: "/fermes" },
     { id: "responsable", label: "Responsable ferme", path: "/responsable" },
+    { id: "poussins", label: "Poussins", path: "/poussins" },
     { id: "medicaments", label: "Médicaments", path: "/medicaments" },
     { id: "maladies", label: "Maladies", path: "/maladies" },
   ];
@@ -54,23 +56,26 @@ function AuthenticatedApp() {
   };
 
   /**
-   * Charge les bandes d'une ferme spécifique
+   * Charge les dernières bandes d'une ferme pour le sélecteur
    */
-  const loadBandes = async (fermeId: number) => {
+  const loadLatestBandes = async (fermeId: number) => {
     try {
-      const result = await invoke<BandeWithDetails[]>("get_bandes_by_ferme", { fermeId });
-      setBandes(result);
+      const result = await invoke<BandeWithDetails[]>("get_latest_bandes_by_ferme", {
+        fermeId,
+        limit: 10,
+      });
+      setLatestBandes(result);
     } catch (error) {
-      console.error("Impossible de charger les bandes:", error);
-      setBandes([]);
+      console.error("Impossible de charger les dernières bandes:", error);
+      setLatestBandes([]);
     }
   };
 
   const handleFermeChange = (ferme: Ferme) => {
     setSelectedFerme(ferme);
 
-    // Charger les bandes de la ferme sélectionnée
-    loadBandes(ferme.id);
+    // Charger les dernières bandes pour le sélecteur
+    loadLatestBandes(ferme.id);
 
     // Réinitialiser la bande sélectionnée
     setSelectedBande(null);
@@ -86,7 +91,7 @@ function AuthenticatedApp() {
   const handleBackToFermes = () => {
     setSelectedFerme(null);
     setSelectedBande(null);
-    setBandes([]);
+    setLatestBandes([]);
     setCurrentView("ferme"); // Back to ferme view
   };
 
@@ -119,12 +124,16 @@ function AuthenticatedApp() {
         fermes={fermes}
         selectedFerme={selectedFerme}
         onFermeChange={handleFermeChange}
-        bandes={bandes}
+        latestBandes={latestBandes}
         selectedBande={selectedBande}
         onBandeChange={handleBandeChange}
         onNewFerme={handleNewFerme}
         onRefreshFermes={loadFermes}
-        onRefreshBandes={() => selectedFerme && loadBandes(selectedFerme.id)}
+        onRefreshBandes={() => {
+          if (selectedFerme) {
+            loadLatestBandes(selectedFerme.id);
+          }
+        }}
         showBreadcrumb={location.pathname.startsWith("/fermes")}
         breadcrumbLevel={currentView}
         navItems={navItems}
@@ -145,17 +154,17 @@ function AuthenticatedApp() {
                 setIsCreateDialogOpen={setIsCreateDialogOpen}
                 onFermeSelect={handleFermeChange}
                 onBackToFermes={handleBackToFermes}
-                bandes={bandes}
                 selectedBande={selectedBande}
                 onBandeSelect={handleBandeChange}
                 onBackToBandes={handleBackToBandes}
                 currentView={currentView}
                 onRefreshFermes={loadFermes}
-                onRefreshBandes={() => selectedFerme && loadBandes(selectedFerme.id)}
+                onRefreshBandes={() => selectedFerme && loadLatestBandes(selectedFerme.id)}
               />
             }
           />
           <Route path="/responsable" element={<ResponsableFerme />} />
+          <Route path="/poussins" element={<Poussins />} />
           <Route path="/medicaments" element={<Medicaments />} />
           <Route path="/maladies" element={<Maladies />} />
           <Route path="/profile" element={<ProfilePage />} />

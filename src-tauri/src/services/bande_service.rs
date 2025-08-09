@@ -97,10 +97,10 @@ impl BandeService {
                 ));
             }
 
-            if batiment_data.type_poussin.trim().is_empty() {
+            if batiment_data.poussin_id < 0 {
                 return Err(AppError::validation_error(
-                    "type_poussin",
-                    "Le type de poussin ne peut pas être vide"
+                    "poussin_id",
+                    "Un poussin valide doit être sélectionné"
                 ));
             }
 
@@ -149,7 +149,7 @@ impl BandeService {
     /// Récupère toutes les bandes avec leurs détails
     pub async fn get_all_bandes(&self) -> AppResult<Vec<BandeWithDetails>> {
         let conn = self.db.get_connection()?;
-        BandeRepository::get_all(&conn).map_err(AppError::from)
+        BandeRepository::get_all_list(&conn).map_err(AppError::from)
     }
 
     /// Récupère une bande par son ID

@@ -9,7 +9,7 @@ pub struct Batiment {
     pub id: Option<i64>,
     pub bande_id: i64,
     pub numero_batiment: String,
-    pub type_poussin: String,
+    pub poussin_id: i64,
     pub personnel_id: i64,
     pub quantite: i32,
 }
@@ -22,7 +22,7 @@ pub struct Batiment {
 pub struct CreateBatiment {
     pub bande_id: i64,
     pub numero_batiment: String,
-    pub type_poussin: String,
+    pub poussin_id: i64,
     pub personnel_id: i64,
     pub quantite: i32,
 }
@@ -36,21 +36,22 @@ pub struct UpdateBatiment {
     pub id: i64,
     pub bande_id: i64,
     pub numero_batiment: String,
-    pub type_poussin: String,
+    pub poussin_id: i64,
     pub personnel_id: i64,
     pub quantite: i32,
 }
 
-/// Vue étendue d'un bâtiment avec les informations du personnel
+/// Vue étendue d'un bâtiment avec les informations du personnel et du poussin
 /// 
-/// Inclut le nom du personnel responsable pour un affichage complet
+/// Inclut le nom du personnel responsable et le nom du poussin pour un affichage complet
 /// sans nécessiter de requêtes supplémentaires côté frontend.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BatimentWithDetails {
     pub id: Option<i64>,
     pub bande_id: i64,
     pub numero_batiment: String,
-    pub type_poussin: String,
+    pub poussin_id: i64,
+    pub poussin_nom: String,
     pub personnel_id: i64,
     pub personnel_nom: String,
     pub quantite: i32,

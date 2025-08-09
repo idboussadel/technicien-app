@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, RefreshCw } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import toast from "react-hot-toast";
 import { CreateAlimentationModal } from "./create-alimentation-modal";
@@ -101,9 +101,6 @@ export function AlimentationHistoryList({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={fetchData}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
           {showAddButton && <CreateAlimentationModal bandeId={bandeId} onSuccess={fetchData} />}
         </div>
       </CardHeader>

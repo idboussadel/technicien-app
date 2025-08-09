@@ -51,3 +51,18 @@ pub struct BandeWithDetails {
     pub batiments: Vec<BatimentWithDetails>,
     pub alimentation_contour: f64,  // Total accumulation d'alimentation en kg
 }
+
+/// Structure de pagination pour les bandes
+/// 
+/// Utilisée pour retourner une liste paginée de bandes avec les métadonnées
+/// de pagination (nombre total, pages, navigation, etc.).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaginatedBandes {
+    pub data: Vec<BandeWithDetails>,
+    pub total: u32,
+    pub page: u32,
+    pub limit: u32,
+    pub total_pages: u32,
+    pub has_next: bool,
+    pub has_prev: bool,
+}

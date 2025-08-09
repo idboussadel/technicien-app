@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::models::{Bande, BandeWithDetails, BatimentWithDetails, CreateBande, UpdateBande};
+use crate::models::{Bande, BandeWithDetails, BatimentWithDetails, CreateBande, UpdateBande, PaginatedBandes};
 use crate::repositories::AlimentationRepository;
 use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -47,8 +47,8 @@ impl BandeRepository {
         })
     }
 
-    /// Get all bandes with their batiments
-    pub fn get_all(
+    /// Get all bandes with their batiments (non-paginated list)
+    pub fn get_all_list(
         conn: &PooledConnection<SqliteConnectionManager>,
     ) -> Result<Vec<BandeWithDetails>, AppError> {
         let mut stmt = conn.prepare(
@@ -133,6 +133,123 @@ impl BandeRepository {
         }
 
         Ok(bandes)
+    }
+
+    /// Get latest bandes by ferme (limited for selectors)
+    pub fn get_latest_by_ferme(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        ferme_id: i64,
+        limit: u32,
+    ) -> Result<Vec<BandeWithDetails>, AppError> {
+        let mut stmt = conn.prepare(
+            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+             FROM bandes b
+             JOIN fermes f ON b.ferme_id = f.id
+             WHERE b.ferme_id = ?1
+             ORDER BY b.date_entree DESC
+             LIMIT ?2"
+        )?;
+        
+        let bandes_result = stmt.query_map([ferme_id, limit as i64], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+        let mut bandes = Vec::new();
+        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+            let date_entree = date_entree_str.parse().map_err(|_| {
+                AppError::business_logic("Format de date invalide dans la base de données")
+            })?;
+            let batiments = Self::load_batiments(conn, id)?;
+            let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
+            bandes.push(BandeWithDetails {
+                id: Some(id),
+                date_entree,
+                ferme_id,
+                ferme_nom,
+                notes,
+                batiments,
+                alimentation_contour,
+            });
+        }
+
+        Ok(bandes)
+    }
+
+    /// Get bandes by ferme with pagination
+    pub fn get_by_ferme_paginated(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        ferme_id: i64,
+        page: u32,
+        per_page: u32,
+    ) -> Result<PaginatedBandes, AppError> {
+        let offset = (page - 1) * per_page;
+        
+        // Count total records for this ferme
+        let total: u32 = conn.query_row(
+            "SELECT COUNT(*) FROM bandes b WHERE b.ferme_id = ?1",
+            [ferme_id],
+            |row| row.get::<_, i64>(0)
+        )? as u32;
+        
+        // Get paginated data
+        let mut stmt = conn.prepare(
+            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+             FROM bandes b
+             JOIN fermes f ON b.ferme_id = f.id
+             WHERE b.ferme_id = ?1
+             ORDER BY b.date_entree DESC
+             LIMIT ?2 OFFSET ?3"
+        )?;
+        
+        let bandes_result = stmt.query_map([ferme_id, per_page as i64, offset as i64], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+        let mut bandes = Vec::new();
+        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+            let date_entree = date_entree_str.parse().map_err(|_| {
+                AppError::business_logic("Format de date invalide dans la base de données")
+            })?;
+            let batiments = Self::load_batiments(conn, id)?;
+            let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
+            bandes.push(BandeWithDetails {
+                id: Some(id),
+                date_entree,
+                ferme_id,
+                ferme_nom,
+                notes,
+                batiments,
+                alimentation_contour,
+            });
+        }
+
+        let total_pages = (total + per_page - 1) / per_page;
+        let has_next = page < total_pages;
+        let has_prev = page > 1;
+
+        Ok(PaginatedBandes {
+            data: bandes,
+            total,
+            page,
+            limit: per_page,
+            total_pages,
+            has_next,
+            has_prev,
+        })
     }
 
     /// Get a bande by ID with its batiments
@@ -261,10 +378,11 @@ impl BandeRepository {
         bande_id: i64,
     ) -> Result<Vec<BatimentWithDetails>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT bat.id, bat.bande_id, bat.numero_batiment, bat.type_poussin,
-                    bat.personnel_id, p.nom as personnel_nom, bat.quantite
+            "SELECT bat.id, bat.bande_id, bat.numero_batiment, bat.poussin_id,
+                    pous.nom as poussin_nom, bat.personnel_id, p.nom as personnel_nom, bat.quantite
              FROM batiments bat
              JOIN personnel p ON bat.personnel_id = p.id
+             JOIN poussins pous ON bat.poussin_id = pous.id
              WHERE bat.bande_id = ?1
              ORDER BY bat.numero_batiment"
         )?;
@@ -274,10 +392,11 @@ impl BandeRepository {
                 id: Some(row.get(0)?),
                 bande_id: row.get(1)?,
                 numero_batiment: row.get(2)?,
-                type_poussin: row.get(3)?,
-                personnel_id: row.get(4)?,
-                personnel_nom: row.get(5)?,
-                quantite: row.get(6)?,
+                poussin_id: row.get(3)?,
+                poussin_nom: row.get(4)?,
+                personnel_id: row.get(5)?,
+                personnel_nom: row.get(6)?,
+                quantite: row.get(7)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;

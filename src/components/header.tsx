@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Check, Search, User, LogOut, ChevronRight, Slash, ChevronsUpDown } from "lucide-react";
+import { Check, Search, User, LogOut, Slash, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import WindowControls from "@/components/ui/window-controls";
 import { useAuth } from "@/contexts/AuthContext";
 import { Ferme, BandeWithDetails } from "@/types";
 
@@ -23,9 +23,9 @@ interface HeaderProps {
   fermes: Ferme[];
   selectedFerme: Ferme | null;
   onFermeChange: (ferme: Ferme) => void;
-  bandes?: BandeWithDetails[];
   selectedBande?: BandeWithDetails | null;
   onBandeChange?: (bande: BandeWithDetails) => void;
+  latestBandes?: BandeWithDetails[]; // Latest 10 bandes for suggestions
   onNewFerme?: () => void;
   onRefreshFermes?: () => void;
   onRefreshBandes?: () => void;
@@ -41,12 +41,9 @@ export default function Header({
   fermes,
   selectedFerme,
   onFermeChange,
-  bandes = [],
   selectedBande,
   onBandeChange,
-  onNewFerme,
-  onRefreshFermes,
-  onRefreshBandes,
+  latestBandes = [],
   showBreadcrumb = false,
   breadcrumbLevel = "ferme",
   navItems,
@@ -55,7 +52,6 @@ export default function Header({
   onAccountClick,
 }: HeaderProps) {
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
-  const [isMaximized, setIsMaximized] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -71,34 +67,6 @@ export default function Header({
     }
     return "U";
   };
-
-  const handleMinimize = async () => {
-    const window = getCurrentWindow();
-    await window.minimize();
-  };
-
-  const handleMaximize = async () => {
-    const window = getCurrentWindow();
-    const isCurrentlyMaximized = await window.isMaximized();
-    await window.toggleMaximize();
-    setIsMaximized(!isCurrentlyMaximized);
-  };
-
-  const handleClose = async () => {
-    const window = getCurrentWindow();
-    await window.close();
-  };
-
-  // Check if window is maximized on component mount
-  useEffect(() => {
-    const checkMaximized = async () => {
-      const window = getCurrentWindow();
-      const maximized = await window.isMaximized();
-      setIsMaximized(maximized);
-    };
-
-    checkMaximized();
-  }, []);
 
   // Update indicator position when route changes
   useEffect(() => {
@@ -129,163 +97,118 @@ export default function Header({
   }, [location.pathname, navItems]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-background backdrop-blur-sm z-50">
-      {/* Top Header Bar */}
-      <div className="h-10 mt-2" data-tauri-drag-region>
-        <div className="flex items-center justify-between h-full" data-tauri-drag-region>
-          <div className="flex items-center space-x-4 pl-6" data-tauri-drag-region={false}>
-            {/* Logo */}
-            <img
-              src="/icon.png"
-              alt="Logo"
-              className="w-8 h-8 object-contain p-1 border rounded-md"
-            />
+    <div className="fixed top-0 left-0 right-0 bg-white z-50">
+      {/* Window Controls */}
+      <WindowControls showLogo={true}>
+        {/* Breadcrumb Navigation */}
+        {showBreadcrumb && (
+          <div className="flex items-center space-x-2 text-sm">
+            {/* Ferme Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex cursor-pointer capitalize items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
+                  <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                    {selectedFerme ? selectedFerme.nom : "Sélectionner une ferme"}
+                  </span>
+                  <ChevronsUpDown className="w-3 h-3 flex-shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-56">
+                {fermes.map((ferme) => (
+                  <DropdownMenuItem
+                    key={ferme.id}
+                    onClick={() => onFermeChange(ferme)}
+                    className="cursor-pointer flex items-center justify-between p-2"
+                  >
+                    <p className="font-medium capitalize text-foreground">{ferme.nom}</p>
+                    {selectedFerme?.id === ferme.id && (
+                      <Check className="w-3 h-3 text-muted-foreground" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-            {/* Breadcrumb Navigation */}
-            {showBreadcrumb && (
-              <div className="flex items-center space-x-2 text-sm">
-                {/* Ferme Selector */}
+            {/* Show separator and bande selector if we're at bande level or deeper */}
+            {breadcrumbLevel !== "ferme" && (
+              <>
+                <Slash className="w-3 h-3 text-muted-foreground -rotate-24" />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex cursor-pointer capitalize items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
+                    <button className="flex cursor-pointer items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
                       <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                        {selectedFerme ? selectedFerme.nom : "Sélectionner une ferme"}
+                        {selectedBande ? `Bande ${selectedBande.id}` : "Sélectionner une bande"}
                       </span>
                       <ChevronsUpDown className="w-3 h-3 flex-shrink-0" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56 p-1">
-                    {fermes.map((ferme) => (
+                  <DropdownMenuContent align="start" className="min-w-56">
+                    {/* Show current selected bande if it's not in latest suggestions */}
+                    {selectedBande && !latestBandes.some((b) => b.id === selectedBande.id) && (
+                      <>
+                        <DropdownMenuItem
+                          key={selectedBande.id}
+                          onClick={() => onBandeChange?.(selectedBande)}
+                          className="cursor-pointer flex items-center justify-between p-2"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
+                              <span className="text-xs font-medium text-blue-600">
+                                {selectedBande.id}
+                              </span>
+                            </div>
+                            <span className="font-medium text-foreground">
+                              Bande {selectedBande.id} -{" "}
+                              {new Date(selectedBande.date_entree).toLocaleDateString("fr-FR")}
+                            </span>
+                          </div>
+                          <Check className="w-3 h-3 text-muted-foreground" />
+                        </DropdownMenuItem>
+                      </>
+                    )}
+
+                    {/* Show latest bandes suggestions */}
+                    {latestBandes.map((bande) => (
                       <DropdownMenuItem
-                        key={ferme.id}
-                        onClick={() => onFermeChange(ferme)}
+                        key={bande.id}
+                        onClick={() => onBandeChange?.(bande)}
                         className="cursor-pointer flex items-center justify-between p-2"
                       >
-                        <p className="font-medium capitalize text-foreground">{ferme.nom}</p>
-                        {selectedFerme?.id === ferme.id && (
+                        <div className="flex items-center space-x-2">
+                          <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
+                            <span className="text-xs font-medium text-blue-600">{bande.id}</span>
+                          </div>
+                          <span className="font-medium text-foreground">
+                            Bande {bande.id} -{" "}
+                            {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
+                          </span>
+                        </div>
+                        {selectedBande?.id === bande.id && (
                           <Check className="w-3 h-3 text-muted-foreground" />
                         )}
                       </DropdownMenuItem>
                     ))}
+
+                    {latestBandes.length === 0 && !selectedBande && (
+                      <DropdownMenuItem disabled className="p-2 text-muted-foreground">
+                        Aucune bande disponible
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
+              </>
+            )}
 
-                {/* Show separator and bande selector if we're at bande level or deeper */}
-                {breadcrumbLevel !== "ferme" && (
-                  <>
-                    <Slash className="w-3 h-3 text-muted-foreground" />
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="flex cursor-pointer items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
-                          <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                            {selectedBande ? `Bande ${selectedBande.id}` : "Sélectionner une bande"}
-                          </span>
-                          <ChevronsUpDown className="w-3 h-3 flex-shrink-0" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="w-56 p-1">
-                        {bandes.map((bande) => (
-                          <DropdownMenuItem
-                            key={bande.id}
-                            onClick={() => onBandeChange?.(bande)}
-                            className="cursor-pointer flex items-center justify-between p-2"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
-                                <span className="text-xs font-medium text-blue-600">
-                                  {bande.id}
-                                </span>
-                              </div>
-                              <span className="font-medium text-foreground">
-                                Bande {bande.id} -{" "}
-                                {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
-                              </span>
-                            </div>
-                            {selectedBande?.id === bande.id && (
-                              <Check className="w-3 h-3 text-muted-foreground" />
-                            )}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
-                )}
-
-                {/* Show separator and batiments text if we're at batiment level */}
-                {breadcrumbLevel === "batiment" && (
-                  <>
-                    <Slash className="w-3 h-3 text-muted-foreground" />
-                    <span className="font-medium text-foreground">Bâtiments</span>
-                  </>
-                )}
-              </div>
+            {/* Show separator and batiments text if we're at batiment level */}
+            {breadcrumbLevel === "batiment" && (
+              <>
+                <Slash className="w-3 h-3 text-muted-foreground -rotate-24" />
+                <span className="font-medium text-foreground">Bâtiments</span>
+              </>
             )}
           </div>
-
-          {/* Window Controls - Absolute positioned at top right */}
-          <div className="absolute top-0 right-0 flex h-11" data-tauri-drag-region={false}>
-            {/* Minimize Button */}
-            <button
-              onClick={handleMinimize}
-              className="w-12 h-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors group"
-              aria-label="Minimize"
-            >
-              <svg className="w-3 h-3" viewBox="0 0 12 12" fill="currentColor">
-                <rect x="0" y="5.5" width="12" height="1" rx="0.5" />
-              </svg>
-            </button>
-
-            {/* Maximize/Restore Button */}
-            <button
-              onClick={handleMaximize}
-              className="w-12 h-full flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors group"
-              aria-label={isMaximized ? "Restore" : "Maximize"}
-            >
-              {isMaximized ? (
-                <svg
-                  className="w-3 h-3"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                >
-                  <rect x="1.5" y="3.5" width="7" height="7" rx="1" />
-                  <path d="M3 3.5V2.5C3 1.67 3.67 1 4.5 1H10C10.83 1 11.5 1.67 11.5 2.5V8C11.5 8.83 10.83 9.5 10 9.5H8.5" />
-                </svg>
-              ) : (
-                <svg
-                  className="w-3 h-3"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1"
-                >
-                  <rect x="1" y="1" width="10" height="10" rx="1" />
-                </svg>
-              )}
-            </button>
-
-            {/* Close Button */}
-            <button
-              onClick={handleClose}
-              className="w-12 h-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors group"
-              aria-label="Close"
-            >
-              <svg
-                className="w-3 h-3"
-                viewBox="0 0 12 12"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              >
-                <path d="M2 2L10 10" />
-                <path d="M10 2L2 10" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
+        )}
+      </WindowControls>
 
       {/* Navigation Bar */}
       <nav className="h-13 bg-background border-b border-border">

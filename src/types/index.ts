@@ -38,7 +38,7 @@ export interface Batiment {
   id: number | null;
   bande_id: number;
   numero_batiment: string;
-  type_poussin: string;
+  poussin_id: number;
   personnel_id: number;
   quantite: number;
 }
@@ -46,7 +46,7 @@ export interface Batiment {
 export interface CreateBatiment {
   bande_id: number;
   numero_batiment: string;
-  type_poussin: string;
+  poussin_id: number;
   personnel_id: number;
   quantite: number;
 }
@@ -55,7 +55,7 @@ export interface UpdateBatiment {
   id: number;
   bande_id: number;
   numero_batiment: string;
-  type_poussin: string;
+  poussin_id: number;
   personnel_id: number;
   quantite: number;
 }
@@ -64,7 +64,8 @@ export interface BatimentWithDetails {
   id: number | null;
   bande_id: number;
   numero_batiment: string;
-  type_poussin: string;
+  poussin_id: number;
+  poussin_nom: string;
   personnel_id: number;
   personnel_nom: string;
   quantite: number;
@@ -109,6 +110,17 @@ export interface BandeWithAlimentationDetails {
   alimentation_history: AlimentationHistory[];
 }
 
+// Pagination interface for bandes
+export interface PaginatedBandes {
+  data: BandeWithDetails[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
 // Legacy interfaces for backward compatibility (will be removed)
 export interface OldCreateBande {
   date_entree: string;
@@ -150,6 +162,32 @@ export interface UpdateMaladie {
 
 export interface PaginatedMaladies {
   data: Maladie[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
+}
+
+// Poussin interfaces
+export interface Poussin {
+  id: number;
+  nom: string;
+  created_at: string;
+}
+
+export interface CreatePoussin {
+  nom: string;
+}
+
+export interface UpdatePoussin {
+  id: number;
+  nom: string;
+}
+
+export interface PaginatedPoussins {
+  data: Poussin[];
   total: number;
   page: number;
   limit: number;

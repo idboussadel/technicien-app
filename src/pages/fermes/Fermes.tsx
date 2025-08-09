@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Building2, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { Plus, Building2, MoreHorizontal, Edit, Trash2, Search } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +48,6 @@ interface FermesPageProps {
   setIsCreateDialogOpen: (open: boolean) => void;
   onFermeSelect: (ferme: Ferme) => void;
   onBackToFermes: () => void;
-  bandes: BandeWithDetails[];
   selectedBande: BandeWithDetails | null;
   onBandeSelect: (bande: BandeWithDetails) => void;
   onBackToBandes: () => void;
@@ -79,7 +78,6 @@ export default function Fermes({
   setIsCreateDialogOpen,
   onFermeSelect,
   onBackToFermes,
-  bandes,
   selectedBande,
   onBandeSelect,
   onBackToBandes,
@@ -90,6 +88,7 @@ export default function Fermes({
   const [fermes, setFermes] = useState<Ferme[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Edit dialog state
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -240,11 +239,23 @@ export default function Fermes({
     loadFermes();
   }, []);
 
+  // Filter fermes based on search term
+  const filteredFermes = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return fermes;
+    }
+    return fermes.filter((ferme) =>
+      ferme.nom.toLowerCase().includes(searchTerm.toLowerCase().trim())
+    );
+  }, [fermes, searchTerm]);
+
   // If a farm is selected, show the Bandes component
   if (selectedFerme) {
     return (
       <Bandes
         ferme={selectedFerme}
+        selectedBande={selectedBande}
+        onBandeSelect={onBandeSelect}
         onBackToFermes={onBackToFermes}
         onRefreshBandes={onRefreshBandes}
       />
@@ -330,37 +341,61 @@ export default function Fermes({
 
           {/* Farms List */}
           <main className="py-3 px-4">
+            {/* Search Bar */}
+            <div className="mb-6">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  placeholder="Rechercher une ferme par nom..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-white border-border focus:border-ring transition-all duration-200"
+                />
+              </div>
+              {searchTerm && (
+                <p className="text-sm text-muted-foreground mt-2">
+                  {filteredFermes.length} ferme{filteredFermes.length !== 1 ? "s" : ""} trouvée
+                  {filteredFermes.length !== 1 ? "s" : ""} pour "{searchTerm}"
+                </p>
+              )}
+            </div>
+
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            ) : fermes.length === 0 ? (
+            ) : filteredFermes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2 text-foreground">Aucune ferme</h3>
+                <h3 className="text-xl font-semibold mb-2 text-foreground">
+                  {searchTerm ? "Aucune ferme trouvée" : "Aucune ferme"}
+                </h3>
                 <p className="text-muted-foreground text-center mb-6 max-w-md">
-                  Vous n'avez pas encore créé de ferme. Commencez par en ajouter une pour gérer vos
-                  bandes d'animaux.
+                  {searchTerm
+                    ? `Aucune ferme ne correspond à "${searchTerm}". Essayez un autre terme de recherche.`
+                    : "Vous n'avez pas encore créé de ferme. Commencez par en ajouter une pour gérer vos bandes d'animaux."}
                 </p>
-                <Button
-                  onClick={() => setIsCreateDialogOpen(true)}
-                  className="bg-foreground hover:bg-foreground/90"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Créer ma première ferme
-                </Button>
+                {!searchTerm && (
+                  <Button
+                    onClick={() => setIsCreateDialogOpen(true)}
+                    className="bg-foreground hover:bg-foreground/90"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Créer ma première ferme
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {/* Farm Cards */}
-                {fermes.map((ferme) => (
+                {filteredFermes.map((ferme) => (
                   <div key={ferme.id} className="group cursor-pointer">
                     <div
                       className="border border-border rounded-xl p-6 transition-all duration-200 aspect-[4/3] bg-[#1d2737] hover:bg-[#1d2737]/90 flex flex-col justify-between relative text-white"
                       onClick={() => onFermeSelect(ferme)}
                     >
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger>
                           <Button
                             variant="ghost"
                             size="sm"

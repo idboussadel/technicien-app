@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import WindowControls from "@/components/ui/window-controls";
 import {
   Form,
   FormControl,
@@ -112,160 +113,166 @@ export default function RegisterPage({ onRegister, onSwitchToLogin }: RegisterPa
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <div className="flex items-center justify-center mb-4">
-            <UserPlus className="h-12 w-12 text-primary" />
-          </div>
-          <CardTitle className="text-2xl text-center">Créer un compte</CardTitle>
-          <CardDescription className="text-center">
-            Créez votre compte pour accéder à l'application
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleRegister)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom d'utilisateur</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Votre nom d'utilisateur"
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="votre.email@exemple.com"
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mot de passe</FormLabel>
-                    <FormControl>
-                      <div className="relative">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Window Controls Header */}
+      <WindowControls showLogo={true} />
+
+      {/* Main Content */}
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center justify-center mb-4">
+              <UserPlus className="h-12 w-12 text-primary" />
+            </div>
+            <CardTitle className="text-2xl text-center">Créer un compte</CardTitle>
+            <CardDescription className="text-center">
+              Créez votre compte pour accéder à l'application
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleRegister)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nom d'utilisateur</FormLabel>
+                      <FormControl>
                         <Input
-                          type={showPassword ? "text" : "password"}
-                          placeholder="Votre mot de passe"
+                          placeholder="Votre nom d'utilisateur"
                           {...field}
                           disabled={isSubmitting}
-                          className="pr-10 [&::-ms-reveal]:hidden [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          autoComplete="new-password"
                         />
-                        <div
-                          className="border-input hover:bg-accent/50 rounded-r absolute inset-y-0 right-0 flex cursor-pointer items-center border-l pr-3 pl-3"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? (
-                            <EyeOff className="h-4 w-4 text-gray-500" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-500" />
-                          )}
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirmer le mot de passe</FormLabel>
-                    <FormControl>
-                      <div className="relative">
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
                         <Input
-                          type={showConfirmPassword ? "text" : "password"}
-                          placeholder="Confirmez votre mot de passe"
+                          type="email"
+                          placeholder="votre.email@exemple.com"
                           {...field}
                           disabled={isSubmitting}
-                          className="pr-10 [&::-ms-reveal]:hidden [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                          autoComplete="new-password"
                         />
-                        <div
-                          className="border-input hover:bg-accent/50 rounded-r absolute inset-y-0 right-0 flex cursor-pointer items-center border-l pr-3 pl-3"
-                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        >
-                          {showConfirmPassword ? (
-                            <EyeOff className="h-4 w-4 text-gray-500" />
-                          ) : (
-                            <Eye className="h-4 w-4 text-gray-500" />
-                          )}
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mot de passe</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Votre mot de passe"
+                            {...field}
+                            disabled={isSubmitting}
+                            className="pr-10 [&::-ms-reveal]:hidden [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            autoComplete="new-password"
+                          />
+                          <div
+                            className="border-input hover:bg-accent/50 rounded-r absolute inset-y-0 right-0 flex cursor-pointer items-center border-l pr-3 pl-3"
+                            onClick={() => setShowPassword(!showPassword)}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-500" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-500" />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="registrationCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Key className="h-4 w-4" />
-                      Code d'enregistrement
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Code secret requis"
-                        {...field}
-                        disabled={isSubmitting}
-                        autoComplete="off"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Création du compte..." : "Créer le compte"}
-              </Button>
-            </form>
-          </Form>
-          <div className="mt-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Déjà un compte ?{" "}
-              <Button
-                variant="link"
-                className="p-0 h-auto font-normal"
-                onClick={onSwitchToLogin}
-                disabled={isSubmitting}
-              >
-                Se connecter
-              </Button>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirmer le mot de passe</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Input
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Confirmez votre mot de passe"
+                            {...field}
+                            disabled={isSubmitting}
+                            className="pr-10 [&::-ms-reveal]:hidden [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            autoComplete="new-password"
+                          />
+                          <div
+                            className="border-input hover:bg-accent/50 rounded-r absolute inset-y-0 right-0 flex cursor-pointer items-center border-l pr-3 pl-3"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          >
+                            {showConfirmPassword ? (
+                              <EyeOff className="h-4 w-4 text-gray-500" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-gray-500" />
+                            )}
+                          </div>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="registrationCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Key className="h-4 w-4" />
+                        Code d'enregistrement
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Code secret requis"
+                          {...field}
+                          disabled={isSubmitting}
+                          autoComplete="off"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? "Création du compte..." : "Créer le compte"}
+                </Button>
+              </form>
+            </Form>
+            <div className="mt-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Déjà un compte ?{" "}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto font-normal"
+                  onClick={onSwitchToLogin}
+                  disabled={isSubmitting}
+                >
+                  Se connecter
+                </Button>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

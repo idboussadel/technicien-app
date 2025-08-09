@@ -13,6 +13,7 @@ pub mod soin;
 pub mod user;
 pub mod alimentation;
 pub mod maladie;
+pub mod poussin;
 
 // Re-export all models for easy access
 pub use ferme::*;
@@ -25,3 +26,4 @@ pub use soin::*;
 pub use user::*;
 pub use alimentation::*;
 pub use maladie::*;
+pub use poussin::*;

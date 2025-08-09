@@ -73,6 +73,8 @@ pub fn run() {
             commands::create_bande,
             commands::get_all_bandes,
             commands::get_bandes_by_ferme,
+            commands::get_latest_bandes_by_ferme,
+            commands::get_bandes_by_ferme_paginated,
             commands::get_bande_by_id,
             commands::update_bande,
             commands::delete_bande,
@@ -97,6 +99,12 @@ pub fn run() {
             commands::get_maladies_list,
             commands::update_maladie,
             commands::delete_maladie,
+            // Poussin commands
+            commands::create_poussin,
+            commands::get_all_poussins,
+            commands::get_poussin_list,
+            commands::update_poussin,
+            commands::delete_poussin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

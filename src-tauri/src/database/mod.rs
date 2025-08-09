@@ -126,10 +126,11 @@ impl DatabaseManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 bande_id INTEGER NOT NULL,
                 numero_batiment TEXT NOT NULL,
-                type_poussin TEXT NOT NULL,
+                poussin_id INTEGER NOT NULL,
                 personnel_id INTEGER NOT NULL,
                 quantite INTEGER NOT NULL,
                 FOREIGN KEY (bande_id) REFERENCES bandes(id) ON DELETE CASCADE,
+                FOREIGN KEY (poussin_id) REFERENCES poussins(id) ON DELETE RESTRICT,
                 FOREIGN KEY (personnel_id) REFERENCES personnel(id) ON DELETE RESTRICT
             )",
             [],
@@ -191,6 +192,16 @@ impl DatabaseManager {
             [],
         )?;
 
+        // Création de la table poussins
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS poussins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nom TEXT NOT NULL UNIQUE,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
         // Création des index pour optimiser les performances
         self.create_indexes(&conn)?;
 
@@ -238,6 +249,12 @@ impl DatabaseManager {
             [],
         )?;
 
+        // Index pour les recherches de batiments par poussin
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_batiments_poussin_id ON batiments(poussin_id)",
+            [],
+        )?;
+
         // Index pour les recherches de semaines par batiment
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_semaines_batiment_id ON semaines(batiment_id)",
@@ -277,18 +294,6 @@ impl DatabaseManager {
         // Index composite pour les recherches par bande et date de création
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_alimentation_history_bande_created ON alimentation_history(bande_id, created_at)",
-            [],
-        )?;
-
-        // Index pour les recherches de maladies par nom
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_maladies_nom ON maladies(nom)",
-            [],
-        )?;
-
-        // Index pour les recherches de maladies par date de création
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_maladies_created_at ON maladies(created_at)",
             [],
         )?;
 
