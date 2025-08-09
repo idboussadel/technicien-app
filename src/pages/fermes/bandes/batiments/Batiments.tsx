@@ -8,6 +8,7 @@ import {
   Users,
   Home,
   ArrowLeft,
+  Calendar,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -15,8 +16,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ferme, BandeWithDetails } from "@/types";
+import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
 import { AlimentationHistoryList } from "@/components/alimentation/alimentation-history-list";
+import { useState } from "react";
+import SemainesView from "./semaines/semaines";
 
 interface BatimentsViewProps {
   bande: BandeWithDetails;
@@ -26,6 +29,9 @@ interface BatimentsViewProps {
 }
 
 export default function BatimentsView({ bande, ferme, onBackToBandes }: BatimentsViewProps) {
+  const [selectedBatiment, setSelectedBatiment] = useState<BatimentWithDetails | null>(null);
+  const [currentView, setCurrentView] = useState<"batiments" | "semaines">("batiments");
+
   const handleCreateBatiment = () => {
     // TODO: Implement create batiment functionality
     console.log("Create new batiment");
@@ -40,6 +46,28 @@ export default function BatimentsView({ bande, ferme, onBackToBandes }: Batiment
     // TODO: Implement delete batiment functionality
     console.log("Delete batiment:", batimentId);
   };
+
+  const handleBatimentClick = (batiment: BatimentWithDetails) => {
+    setSelectedBatiment(batiment);
+    setCurrentView("semaines");
+  };
+
+  const handleBackToBatiments = () => {
+    setCurrentView("batiments");
+    setSelectedBatiment(null);
+  };
+
+  // Si on est en mode semaines, afficher la vue des semaines
+  if (currentView === "semaines" && selectedBatiment) {
+    return (
+      <SemainesView
+        batiment={selectedBatiment}
+        bande={bande}
+        ferme={ferme}
+        onBackToBatiments={handleBackToBatiments}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -78,16 +106,21 @@ export default function BatimentsView({ bande, ferme, onBackToBandes }: Batiment
                 {bande.batiments.map((batiment, index) => (
                   <div
                     key={batiment.id || index}
-                    className="bg-white border border-border rounded-lg p-6 hover:shadow-sm transition-shadow"
+                    className="bg-white border border-border rounded-lg p-6 hover:shadow-sm transition-shadow cursor-pointer"
+                    onClick={() => handleBatimentClick(batiment)}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-6">
                         <div className="flex items-center gap-3">
                           <Home className="h-5 w-5 text-primary" />
                           <div>
-                            <h3 className="font-semibold text-lg">
+                            <h3 className="font-semibold text-lg flex items-center gap-2">
                               Bâtiment {batiment.numero_batiment}
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
                             </h3>
+                            <p className="text-sm text-muted-foreground">
+                              Cliquez pour voir le suivi hebdomadaire
+                            </p>
                           </div>
                         </div>
 
@@ -110,7 +143,12 @@ export default function BatimentsView({ bande, ferme, onBackToBandes }: Batiment
 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

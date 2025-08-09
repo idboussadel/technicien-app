@@ -48,17 +48,17 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 alimentation_par_jour, alimentation_total, 
                 soins_id, soins_quantite, analyses, remarques
             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            [
-                &suivi.semaine_id.to_string(),
-                &suivi.age.to_string(),
-                &suivi.deces_par_jour.map(|d| d.to_string()).unwrap_or_default(),
-                &suivi.deces_total.map(|d| d.to_string()).unwrap_or_default(),
-                &suivi.alimentation_par_jour.map(|a| a.to_string()).unwrap_or_default(),
-                &suivi.alimentation_total.map(|a| a.to_string()).unwrap_or_default(),
-                &suivi.soins_id.map(|s| s.to_string()).unwrap_or_default(),
-                &suivi.soins_quantite.as_ref().unwrap_or(&String::new()),
-                &suivi.analyses.as_ref().unwrap_or(&String::new()),
-                &suivi.remarques.as_ref().unwrap_or(&String::new()),
+            rusqlite::params![
+                suivi.semaine_id,
+                suivi.age,
+                suivi.deces_par_jour,
+                suivi.deces_total,
+                suivi.alimentation_par_jour,
+                suivi.alimentation_total,
+                suivi.soins_id,
+                suivi.soins_quantite,
+                suivi.analyses,
+                suivi.remarques,
             ],
         )?;
 
@@ -169,18 +169,18 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 alimentation_par_jour = ?5, alimentation_total = ?6,
                 soins_id = ?7, soins_quantite = ?8, analyses = ?9, remarques = ?10
              WHERE id = ?11",
-            [
-                &suivi.semaine_id.to_string(),
-                &suivi.age.to_string(),
-                &suivi.deces_par_jour.map(|d| d.to_string()).unwrap_or_default(),
-                &suivi.deces_total.map(|d| d.to_string()).unwrap_or_default(),
-                &suivi.alimentation_par_jour.map(|a| a.to_string()).unwrap_or_default(),
-                &suivi.alimentation_total.map(|a| a.to_string()).unwrap_or_default(),
-                &suivi.soins_id.map(|s| s.to_string()).unwrap_or_default(),
-                &suivi.soins_quantite.as_ref().unwrap_or(&String::new()),
-                &suivi.analyses.as_ref().unwrap_or(&String::new()),
-                &suivi.remarques.as_ref().unwrap_or(&String::new()),
-                &suivi.id.to_string(),
+            rusqlite::params![
+                suivi.semaine_id,
+                suivi.age,
+                suivi.deces_par_jour,
+                suivi.deces_total,
+                suivi.alimentation_par_jour,
+                suivi.alimentation_total,
+                suivi.soins_id,
+                suivi.soins_quantite,
+                suivi.analyses,
+                suivi.remarques,
+                suivi.id,
             ],
         )?;
 

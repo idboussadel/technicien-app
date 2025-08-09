@@ -2,7 +2,6 @@ use crate::error::AppError;
 use crate::models::{Batiment, BatimentWithDetails, CreateBatiment, UpdateBatiment};
 use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::Result as SqliteResult;
 
 /// Repository for managing batiments
 pub struct BatimentRepository;
@@ -72,12 +71,12 @@ impl BatimentRepository {
         conn.execute(
             "INSERT INTO batiments (bande_id, numero_batiment, poussin_id, personnel_id, quantite) 
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            [
-                &batiment.bande_id.to_string(),
-                &batiment.numero_batiment,
-                &batiment.poussin_id.to_string(),
-                &batiment.personnel_id.to_string(),
-                &batiment.quantite.to_string(),
+            rusqlite::params![
+                batiment.bande_id,
+                batiment.numero_batiment,
+                batiment.poussin_id,
+                batiment.personnel_id,
+                batiment.quantite,
             ],
         )?;
 
@@ -207,13 +206,13 @@ impl BatimentRepository {
         let rows_affected = conn.execute(
             "UPDATE batiments SET bande_id = ?1, numero_batiment = ?2, poussin_id = ?3, 
                                   personnel_id = ?4, quantite = ?5 WHERE id = ?6",
-            [
-                &batiment.bande_id.to_string(),
-                &batiment.numero_batiment,
-                &batiment.poussin_id.to_string(),
-                &batiment.personnel_id.to_string(),
-                &batiment.quantite.to_string(),
-                &id.to_string(),
+            rusqlite::params![
+                batiment.bande_id,
+                batiment.numero_batiment,
+                batiment.poussin_id,
+                batiment.personnel_id,
+                batiment.quantite,
+                id,
             ],
         )?;
 

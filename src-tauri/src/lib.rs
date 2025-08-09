@@ -66,6 +66,7 @@ pub fn run() {
             // Soin commands
             commands::create_soin,
             commands::get_all_soins,
+            commands::get_soins_list,
             commands::get_soin_by_id,
             commands::update_soin,
             commands::delete_soin,
@@ -105,6 +106,23 @@ pub fn run() {
             commands::get_poussin_list,
             commands::update_poussin,
             commands::delete_poussin,
+            // Semaine commands
+            commands::create_semaine,
+            commands::get_all_semaines,
+            commands::get_semaine_by_id,
+            commands::get_semaines_by_batiment,
+            commands::get_full_semaines_by_batiment,
+            commands::update_semaine,
+            commands::update_semaine_poids,
+            commands::delete_semaine,
+            // Suivi quotidien commands
+            commands::create_suivi_quotidien,
+            commands::get_all_suivi_quotidien,
+            commands::get_suivi_quotidien_by_id,
+            commands::get_suivi_quotidien_by_semaine,
+            commands::update_suivi_quotidien,
+            commands::delete_suivi_quotidien,
+            commands::upsert_suivi_quotidien_field,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

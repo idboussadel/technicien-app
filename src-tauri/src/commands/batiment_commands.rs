@@ -8,8 +8,12 @@ use std::sync::Arc;
 use crate::database::DatabaseManager;
 use crate::models::{Batiment, CreateBatiment, UpdateBatiment, BatimentWithDetails};
 use crate::repositories::BatimentRepository;
+use crate::services::semaine_service::SemaineService;
 
 /// Create a new batiment
+/// 
+/// After creating the batiment, this command automatically initializes
+/// the 8 semaines (weeks) for tracking purposes.
 #[tauri::command]
 pub async fn create_batiment(
     db: State<'_, Arc<DatabaseManager>>,
@@ -17,8 +21,19 @@ pub async fn create_batiment(
 ) -> Result<Batiment, String> {
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     
-    BatimentRepository::create(&conn, &batiment)
-        .map_err(|e| e.to_string())
+    // Create the batiment
+    let created_batiment = BatimentRepository::create(&conn, &batiment)
+        .map_err(|e| e.to_string())?;
+    
+    // Initialize the 8 semaines for this batiment
+    if let Some(batiment_id) = created_batiment.id {
+        let semaine_service = SemaineService::new(db.inner().clone());
+        semaine_service.initialize_batiment_semaines(batiment_id)
+            .await
+            .map_err(|e| format!("Erreur lors de l'initialisation des semaines: {}", e))?;
+    }
+    
+    Ok(created_batiment)
 }
 
 /// Get all batiments for a specific bande

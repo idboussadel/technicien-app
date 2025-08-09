@@ -44,10 +44,10 @@ impl SemaineRepositoryTrait for SemaineRepository {
         // Insertion de la semaine
         conn.execute(
             "INSERT INTO semaines (batiment_id, numero_semaine, poids) VALUES (?1, ?2, ?3)",
-            [
-                &semaine.batiment_id.to_string(),
-                &semaine.numero_semaine.to_string(),
-                &semaine.poids.map(|p| p.to_string()).unwrap_or_default(),
+            rusqlite::params![
+                semaine.batiment_id,
+                semaine.numero_semaine,
+                semaine.poids,
             ],
         )?;
 
@@ -119,11 +119,11 @@ impl SemaineRepositoryTrait for SemaineRepository {
         // Mise à jour de la semaine
         let rows_affected = conn.execute(
             "UPDATE semaines SET batiment_id = ?1, numero_semaine = ?2, poids = ?3 WHERE id = ?4",
-            [
-                &semaine.batiment_id.to_string(),
-                &semaine.numero_semaine.to_string(),
-                &semaine.poids.map(|p| p.to_string()).unwrap_or_default(),
-                &semaine.id.to_string(),
+            rusqlite::params![
+                semaine.batiment_id,
+                semaine.numero_semaine,
+                semaine.poids,
+                semaine.id,
             ],
         )?;
 

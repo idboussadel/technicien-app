@@ -195,3 +195,109 @@ export interface PaginatedPoussins {
   has_next: boolean;
   has_prev: boolean;
 }
+
+// Semaine interfaces
+export interface Semaine {
+  id: number | null;
+  batiment_id: number;
+  numero_semaine: number;
+  poids: number | null;
+}
+
+export interface CreateSemaine {
+  batiment_id: number;
+  numero_semaine: number;
+  poids: number | null;
+}
+
+export interface UpdateSemaine {
+  id: number;
+  batiment_id: number;
+  numero_semaine: number;
+  poids: number | null;
+}
+
+// SuiviQuotidien interfaces
+export interface SuiviQuotidien {
+  id: number | null;
+  semaine_id: number;
+  age: number;
+  deces_par_jour: number | null;
+  deces_total: number | null;
+  alimentation_par_jour: number | null;
+  alimentation_total: number | null;
+  soins_id: number | null;
+  soins_quantite: string | null;
+  analyses: string | null;
+  remarques: string | null;
+}
+
+export interface SuiviQuotidienWithDetails {
+  id: number | null;
+  semaine_id: number;
+  age: number;
+  deces_par_jour: number | null;
+  deces_total: number | null;
+  alimentation_par_jour: number | null;
+  alimentation_total: number | null;
+  soins_id: number | null;
+  soins_nom: string | null;
+  soins_quantite: string | null;
+  analyses: string | null;
+  remarques: string | null;
+}
+
+export interface CreateSuiviQuotidien {
+  semaine_id: number;
+  age: number;
+  deces_par_jour: number | null;
+  deces_total: number | null;
+  alimentation_par_jour: number | null;
+  alimentation_total: number | null;
+  soins_id: number | null;
+  soins_quantite: string | null;
+  analyses: string | null;
+  remarques: string | null;
+}
+
+export interface UpdateSuiviQuotidien {
+  id: number;
+  semaine_id: number;
+  age: number;
+  deces_par_jour: number | null;
+  deces_total: number | null;
+  alimentation_par_jour: number | null;
+  alimentation_total: number | null;
+  soins_id: number | null;
+  soins_quantite: string | null;
+  analyses: string | null;
+  remarques: string | null;
+}
+
+// Extended interfaces for displaying detailed weekly data
+export interface SemaineWithDetails {
+  id: number | null;
+  batiment_id: number;
+  numero_semaine: number;
+  poids: number | null;
+  suivi_quotidien: SuiviQuotidienWithDetails[];
+}
+
+export interface BatimentWithSemaines {
+  id: number | null;
+  bande_id: number;
+  numero_batiment: string;
+  poussin_id: number;
+  poussin_nom: string;
+  personnel_id: number;
+  personnel_nom: string;
+  quantite: number;
+  semaines: SemaineWithDetails[];
+}
+
+// Soin interface (might need to be imported from somewhere else)
+export interface Soin {
+  id: number;
+  nom: string;
+  created_at: string;
+}

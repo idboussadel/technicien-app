@@ -33,6 +33,17 @@ pub async fn get_all_soins(
     repo.get_all(page, per_page, nom_search).await.map_err(|e| e.to_string())
 }
 
+/// Get all soins as a simple list (for combobox usage)
+#[tauri::command]
+pub async fn get_soins_list(
+    db: State<'_, Arc<DatabaseManager>>,
+) -> Result<Vec<Soin>, String> {
+    let repo = SoinRepository::new(db.inner().clone());
+    // Use a large page size to get all soins
+    let result = repo.get_all(1, 1000, None).await.map_err(|e| e.to_string())?;
+    Ok(result.data)
+}
+
 #[tauri::command]
 pub async fn get_soin_by_id(
     id: i64,
