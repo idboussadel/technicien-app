@@ -2,7 +2,7 @@ import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import WindowControls from "@/components/ui/window-controls";
 import {
   Form,
@@ -16,7 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import toast from "react-hot-toast";
-import { Eye, EyeOff, UserPlus, Key } from "lucide-react";
+import { Eye, EyeOff, Key } from "lucide-react";
 
 interface RegisterFormData {
   username: string;
@@ -122,9 +122,8 @@ export default function RegisterPage({ onRegister, onSwitchToLogin }: RegisterPa
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
             <div className="flex items-center justify-center mb-4">
-              <UserPlus className="h-12 w-12 text-primary" />
+              <img src="/logo.png" className="w-[19rem]" alt="Logo" />
             </div>
-            <CardTitle className="text-2xl text-center">Créer un compte</CardTitle>
             <CardDescription className="text-center">
               Créez votre compte pour accéder à l'application
             </CardDescription>
@@ -141,6 +140,7 @@ export default function RegisterPage({ onRegister, onSwitchToLogin }: RegisterPa
                       <FormControl>
                         <Input
                           placeholder="Votre nom d'utilisateur"
+                          autoComplete="off"
                           {...field}
                           disabled={isSubmitting}
                         />
@@ -159,6 +159,7 @@ export default function RegisterPage({ onRegister, onSwitchToLogin }: RegisterPa
                         <Input
                           type="email"
                           placeholder="votre.email@exemple.com"
+                          autoComplete="off"
                           {...field}
                           disabled={isSubmitting}
                         />
