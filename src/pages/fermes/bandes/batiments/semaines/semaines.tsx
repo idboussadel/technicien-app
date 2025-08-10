@@ -24,7 +24,6 @@ import {
   Ferme,
   BandeWithDetails,
   SemaineWithDetails,
-  SuiviQuotidienWithDetails,
   SuiviQuotidienWithTotals,
   Soin,
 } from "@/types";
@@ -42,7 +41,7 @@ interface SemainesViewProps {
 interface EditingCell {
   semaineId: number;
   age: number;
-  field: keyof SuiviQuotidienWithDetails;
+  field: keyof SuiviQuotidienWithTotals;
 }
 
 interface EditingPoids {
@@ -70,6 +69,8 @@ export default function SemainesView({
   const [editingPoids, setEditingPoids] = useState<EditingPoids | null>(null);
   const [poidsValue, setPoidsValue] = useState<string>("");
   const [rowHeights, setRowHeights] = useState<Record<string, { row6: number; row7: number }>>({});
+  const [editingNotes, setEditingNotes] = useState<boolean>(false);
+  const [notesValue, setNotesValue] = useState<string>("");
 
   /**
    * Initialise les données du composant en récupérant les semaines et les soins
@@ -185,6 +186,30 @@ export default function SemainesView({
   };
 
   /**
+   * Vérifie si le poids d'une semaine peut être édité selon les règles de progression
+   */
+  const canEditPoids = (semaineId: number): boolean => {
+    const currentSemaine = semaines.find((s) => s.id === semaineId);
+    if (!currentSemaine) return false;
+
+    // Pour la première semaine, toujours autorisé
+    if (currentSemaine.numero_semaine === 1) {
+      return true;
+    }
+
+    // Pour les autres semaines, vérifier que la semaine précédente a un poids
+    const previousSemaine = semaines.find(
+      (s) => s.numero_semaine === currentSemaine.numero_semaine - 1
+    );
+
+    if (previousSemaine) {
+      return previousSemaine.poids !== null && previousSemaine.poids !== undefined;
+    }
+
+    return false;
+  };
+
+  /**
    * Vérifie si une cellule peut être éditée selon les règles de progression
    */
   const canEditCell = (
@@ -264,7 +289,7 @@ export default function SemainesView({
   const handleCellClick = (
     semaineId: number,
     age: number,
-    field: keyof SuiviQuotidienWithDetails,
+    field: keyof SuiviQuotidienWithTotals,
     currentValue: any,
     originalValue?: any
   ) => {
@@ -359,7 +384,10 @@ export default function SemainesView({
    * Gère la perte de focus pour sauvegarder
    */
   const handleInputBlur = () => {
-    handleSaveEdit();
+    // Ne sauvegarder que si on est en mode édition
+    if (editingCell) {
+      handleSaveEdit();
+    }
   };
 
   /**
@@ -375,6 +403,12 @@ export default function SemainesView({
    * Gère le double-clic sur le poids d'une semaine
    */
   const handlePoidsDoubleClick = (semaine: SemaineWithDetails) => {
+    // Vérifier si le poids peut être édité
+    if (!canEditPoids(semaine.id!)) {
+      toast.error("Veuillez d'abord renseigner le poids de la semaine précédente");
+      return;
+    }
+
     setEditingPoids({ semaineId: semaine.id! });
     setPoidsValue(semaine.poids?.toString() || "");
   };
@@ -414,6 +448,62 @@ export default function SemainesView({
     } else if (e.key === "Escape") {
       setEditingPoids(null);
       setPoidsValue("");
+    }
+  };
+
+  /**
+   * Gère le double-clic sur les notes de la bande
+   */
+  const handleNotesDoubleClick = () => {
+    setEditingNotes(true);
+    setNotesValue(bande.notes || "");
+  };
+
+  /**
+   * Gère la sauvegarde des notes de la bande
+   */
+  const handleSaveNotes = async () => {
+    try {
+      const newNotes = notesValue.trim() === "" ? null : notesValue;
+      const currentNotes = bande.notes;
+
+      // Ne sauvegarder que si les notes ont changé
+      if (newNotes !== currentNotes) {
+        const updateData = {
+          id: bande.id,
+          date_entree: bande.date_entree,
+          ferme_id: bande.ferme_id,
+          notes: newNotes,
+        };
+
+        await invoke("update_bande", {
+          id: bande.id,
+          bande: updateData,
+        });
+
+        // Mettre à jour les notes localement pour un affichage immédiat
+        bande.notes = newNotes;
+
+        toast.success("Notes mises à jour avec succès");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la sauvegarde des notes:", error);
+      toast.error("Erreur lors de la sauvegarde des notes");
+    } finally {
+      setEditingNotes(false);
+      setNotesValue("");
+    }
+  };
+
+  /**
+   * Gère les touches du clavier pour les notes
+   */
+  const handleNotesKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSaveNotes();
+    } else if (e.key === "Escape") {
+      setEditingNotes(false);
+      setNotesValue("");
     }
   };
 
@@ -459,6 +549,72 @@ export default function SemainesView({
       day: "2-digit",
       month: "2-digit",
     });
+  };
+
+  /**
+   * Calcule l'alimentation totale pour tous les suivis quotidiens
+   */
+  const calculateTotalAlimentation = (): number => {
+    let total = 0;
+    semaines.forEach((semaine) => {
+      semaine.suivi_quotidien.forEach((suivi) => {
+        total += suivi.alimentation_par_jour || 0;
+      });
+    });
+    return total;
+  };
+
+  /**
+   * Calcule le poids final (le dernier poids renseigné dans les semaines)
+   */
+  const calculateFinalWeight = (): number | null => {
+    // Trier les semaines par numéro décroissant et chercher le premier poids non null
+    const sortedSemaines = [...semaines].sort((a, b) => b.numero_semaine - a.numero_semaine);
+    for (const semaine of sortedSemaines) {
+      if (semaine.poids !== null && semaine.poids !== undefined) {
+        return semaine.poids;
+      }
+    }
+    return null;
+  };
+
+  /**
+   * Calcule le facteur de conversion (alimentation totale / poids final)
+   */
+  const calculateConversionFactor = (): number | null => {
+    const totalAlimentation = calculateTotalAlimentation();
+    const finalWeight = calculateFinalWeight();
+
+    if (finalWeight && finalWeight > 0) {
+      return totalAlimentation / finalWeight;
+    }
+    return null;
+  };
+
+  /**
+   * Calcule le total des décès pour tous les suivis quotidiens
+   */
+  const calculateTotalDeaths = (): number => {
+    let total = 0;
+    semaines.forEach((semaine) => {
+      semaine.suivi_quotidien.forEach((suivi) => {
+        total += suivi.deces_par_jour || 0;
+      });
+    });
+    return total;
+  };
+
+  /**
+   * Calcule le pourcentage de mortalité (décès total / quantité initiale)
+   */
+  const calculateDeathPercentage = (): number => {
+    const totalDeaths = calculateTotalDeaths();
+    const initialQuantity = batiment.quantite || 0;
+
+    if (initialQuantity > 0) {
+      return (totalDeaths / initialQuantity) * 100;
+    }
+    return 0;
   };
 
   if (loading) {
@@ -572,7 +728,7 @@ export default function SemainesView({
                               editingCell?.field === field &&
                               editingCell?.age === suivi.age;
 
-                            const fieldKey = field as keyof SuiviQuotidienWithDetails;
+                            const fieldKey = field as keyof SuiviQuotidienWithTotals;
                             let value = suivi[fieldKey];
                             const isLastCellInRow = index === array.length - 1;
 
@@ -782,16 +938,28 @@ export default function SemainesView({
                               value={poidsValue}
                               onChange={(e) => setPoidsValue(e.target.value)}
                               onKeyDown={handlePoidsKeyDown}
-                              onBlur={handleSavePoids}
+                              onBlur={() => {
+                                if (editingPoids) {
+                                  handleSavePoids();
+                                }
+                              }}
                               className="w-full h-full border-none focus:outline-none focus:ring-0 text-center bg-white dark:bg-white rounded-none px-4 py-2 m-0 min-h-0"
                               style={{ boxShadow: "none" }}
                               autoFocus
                             />
                           ) : (
                             <div
-                              className="w-full h-full cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-100 px-4 py-2 transition-colors flex items-center justify-center"
+                              className={`w-full h-full px-4 py-2 transition-colors flex items-center justify-center ${
+                                canEditPoids(semaine.id!)
+                                  ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-100"
+                                  : "cursor-not-allowed"
+                              }`}
                               onDoubleClick={() => handlePoidsDoubleClick(semaine)}
-                              title="Double-cliquez pour modifier"
+                              title={
+                                canEditPoids(semaine.id!)
+                                  ? "Double-cliquez pour modifier"
+                                  : "Veuillez d'abord renseigner le poids de la semaine précédente"
+                              }
                             >
                               {semaine.poids !== null ? `${semaine.poids}` : "-"}
                             </div>
@@ -803,6 +971,124 @@ export default function SemainesView({
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Tableau des résultats */}
+          <div className="mt-8">
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-200 dark:border-slate-600">
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                  Tableau des Résultats
+                </h2>
+              </div>
+
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                      Alimentation Totale
+                    </TableHead>
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                      Poids Final
+                    </TableHead>
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                      Facteur de Conversion
+                    </TableHead>
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                      Décès Total
+                    </TableHead>
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                      Pourcentage de Mortalité
+                    </TableHead>
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300">
+                      Notes
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    {/* Alimentation Totale */}
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                      <div className="px-4 py-2 h-full w-full flex items-center justify-center">
+                        {(() => {
+                          const totalAlimentation = calculateTotalAlimentation();
+                          return totalAlimentation > 0 ? `${totalAlimentation.toFixed(2)} kg` : "-";
+                        })()}
+                      </div>
+                    </TableCell>
+
+                    {/* Poids Final */}
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                      <div className="px-4 py-2 h-full w-full flex items-center justify-center">
+                        {(() => {
+                          const finalWeight = calculateFinalWeight();
+                          return finalWeight !== null ? `${finalWeight} kg` : "-";
+                        })()}
+                      </div>
+                    </TableCell>
+
+                    {/* Facteur de Conversion */}
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                      <div className="px-4 py-2 h-full w-full flex items-center justify-center">
+                        {(() => {
+                          const conversionFactor = calculateConversionFactor();
+                          return conversionFactor !== null ? conversionFactor.toFixed(3) : "-";
+                        })()}
+                      </div>
+                    </TableCell>
+
+                    {/* Décès Total */}
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                      <div className="px-4 py-2 h-full w-full flex items-center justify-center">
+                        {(() => {
+                          const totalDeaths = calculateTotalDeaths();
+                          return totalDeaths > 0 ? totalDeaths : "-";
+                        })()}
+                      </div>
+                    </TableCell>
+
+                    {/* Pourcentage de Mortalité */}
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                      <div className="px-4 py-2 h-full w-full flex items-center justify-center">
+                        {(() => {
+                          const deathPercentage = calculateDeathPercentage();
+                          return deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-";
+                        })()}
+                      </div>
+                    </TableCell>
+
+                    {/* Notes (Editable) */}
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 bg-white dark:bg-white p-0">
+                      {editingNotes ? (
+                        <Input
+                          type="text"
+                          value={notesValue}
+                          onChange={(e) => setNotesValue(e.target.value)}
+                          onBlur={() => {
+                            if (editingNotes) {
+                              handleSaveNotes();
+                            }
+                          }}
+                          onKeyDown={handleNotesKeyDown}
+                          className="w-full h-full border-none focus:outline-none focus:ring-0 text-center bg-white dark:bg-white rounded-none px-4 py-2 m-0"
+                          style={{ boxShadow: "none" }}
+                          autoFocus
+                          placeholder="Ajouter des notes..."
+                        />
+                      ) : (
+                        <div
+                          className="px-4 py-2 h-full w-full cursor-pointer hover:bg-gray-50 flex items-center justify-center min-h-[53px]"
+                          onDoubleClick={handleNotesDoubleClick}
+                          title="Double-cliquez pour modifier les notes"
+                        >
+                          {bande.notes || "Double-cliquez pour ajouter des notes"}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </div>
       </main>

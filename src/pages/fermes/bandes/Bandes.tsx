@@ -11,7 +11,6 @@ import {
   CalendarDays,
   Building,
   Search,
-  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -19,11 +18,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { DateRange } from "react-day-picker";
+import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
 import toast from "react-hot-toast";
 import CreateBandeModal from "./create-bande-modal";
 import BatimentsView from "./batiments/Batiments";
@@ -84,10 +81,7 @@ export default function Bandes({
   const [availableBatiments, setAvailableBatiments] = useState<string[]>([]);
 
   // Date range filter state
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [isDateFromOpen, setIsDateFromOpen] = useState(false);
-  const [isDateToOpen, setIsDateToOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   /**
    * Charge les bandes d'une ferme spécifique avec pagination
@@ -96,8 +90,7 @@ export default function Bandes({
     fermeId: number,
     page: number = 1,
     perPage?: number,
-    dateFromFilter?: Date,
-    dateToFilter?: Date
+    dateRangeFilter?: DateRange
   ) => {
     try {
       setIsBandesLoading(true);
@@ -105,8 +98,8 @@ export default function Bandes({
         fermeId,
         page,
         perPage: perPage || pagination.limit,
-        dateFrom: dateFromFilter ? format(dateFromFilter, "yyyy-MM-dd") : null,
-        dateTo: dateToFilter ? format(dateToFilter, "yyyy-MM-dd") : null,
+        dateFrom: dateRangeFilter?.from ? format(dateRangeFilter.from, "yyyy-MM-dd") : null,
+        dateTo: dateRangeFilter?.to ? format(dateRangeFilter.to, "yyyy-MM-dd") : null,
       });
       setBandes(result.data);
       setPagination((prev) => ({
@@ -130,16 +123,7 @@ export default function Bandes({
    * Handle search with date filters
    */
   const handleSearch = () => {
-    loadBandes(ferme.id, 1, pagination.limit, dateFrom, dateTo);
-  };
-
-  /**
-   * Clear date filters and reload
-   */
-  const handleClearFilters = () => {
-    setDateFrom(undefined);
-    setDateTo(undefined);
-    loadBandes(ferme.id, 1, pagination.limit);
+    loadBandes(ferme.id, 1, pagination.limit, dateRange);
   };
 
   /**
@@ -185,7 +169,7 @@ export default function Bandes({
    * Callback when a bande is created successfully
    */
   const handleBandeCreated = async () => {
-    await loadBandes(ferme.id, pagination.page, pagination.limit, dateFrom, dateTo);
+    await loadBandes(ferme.id, pagination.page, pagination.limit, dateRange);
     await loadAvailableBatiments(ferme.id);
     // Refresh parent state to update breadcrumb
     onRefreshBandes?.();
@@ -195,7 +179,7 @@ export default function Bandes({
    * Handle page change
    */
   const handlePageChange = (page: number) => {
-    loadBandes(ferme.id, page, pagination.limit, dateFrom, dateTo);
+    loadBandes(ferme.id, page, pagination.limit, dateRange);
   };
 
   /**
@@ -204,7 +188,7 @@ export default function Bandes({
   const handlePageSizeChange = (newPageSize: string) => {
     const newLimit = parseInt(newPageSize);
     setPagination((prev) => ({ ...prev, limit: newLimit, page: 1 }));
-    loadBandes(ferme.id, 1, newLimit, dateFrom, dateTo);
+    loadBandes(ferme.id, 1, newLimit, dateRange);
   };
 
   /**
@@ -277,92 +261,13 @@ export default function Bandes({
           </div>
 
           {/* Date Range Filter */}
-          <div className="bg-white rounded-lg border p-4 space-y-4">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Filtrer par date d'entrée:</span>
-              </div>
-
-              {/* Date From */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Du:</span>
-                <Popover open={isDateFromOpen} onOpenChange={setIsDateFromOpen}>
-                  <PopoverTrigger>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[200px] justify-start text-left font-normal",
-                        !dateFrom && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {dateFrom ? format(dateFrom, "dd/MM/yyyy", { locale: fr }) : "Sélectionner"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateFrom}
-                      onSelect={(date) => {
-                        setDateFrom(date);
-                        setIsDateFromOpen(false);
-                      }}
-                      locale={fr}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Date To */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Au:</span>
-                <Popover open={isDateToOpen} onOpenChange={setIsDateToOpen}>
-                  <PopoverTrigger>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[200px] justify-start text-left font-normal",
-                        !dateTo && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {dateTo ? format(dateTo, "dd/MM/yyyy", { locale: fr }) : "Sélectionner"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={dateTo}
-                      onSelect={(date) => {
-                        setDateTo(date);
-                        setIsDateToOpen(false);
-                      }}
-                      locale={fr}
-                      initialFocus
-                      disabled={(date) => (dateFrom ? date < dateFrom : false)}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Search and Clear Buttons */}
-              <div className="flex items-center gap-2 ml-auto">
-                <Button onClick={handleSearch} disabled={!dateFrom && !dateTo} size="sm">
-                  <Search className="mr-2 h-4 w-4" />
-                  Rechercher
-                </Button>
-                <Button
-                  onClick={handleClearFilters}
-                  variant="outline"
-                  size="sm"
-                  disabled={!dateFrom && !dateTo}
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Effacer
-                </Button>
-              </div>
+          <div className="flex gap-4">
+            <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+            <div className="flex gap-2">
+              <Button onClick={handleSearch} disabled={!dateRange?.from && !dateRange?.to}>
+                <Search className="mr-2 h-4 w-4" />
+                Rechercher
+              </Button>
             </div>
           </div>
 
