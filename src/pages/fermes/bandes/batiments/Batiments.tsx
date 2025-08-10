@@ -26,11 +26,27 @@ interface BatimentsViewProps {
   ferme: Ferme;
   onBackToBandes: () => void;
   onBackToFermes: () => void;
+  selectedBatiment?: BatimentWithDetails | null;
+  onBatimentSelect?: (batiment: BatimentWithDetails) => void;
+  onBackToBatiments?: () => void;
+  currentView?: "ferme" | "bande" | "batiment" | "semaine";
 }
 
-export default function BatimentsView({ bande, ferme, onBackToBandes }: BatimentsViewProps) {
-  const [selectedBatiment, setSelectedBatiment] = useState<BatimentWithDetails | null>(null);
-  const [currentView, setCurrentView] = useState<"batiments" | "semaines">("batiments");
+export default function BatimentsView({
+  bande,
+  ferme,
+  onBackToBandes,
+  selectedBatiment: parentSelectedBatiment,
+  onBatimentSelect,
+  onBackToBatiments,
+  currentView: parentCurrentView,
+}: BatimentsViewProps) {
+  const [selectedBatiment, setSelectedBatiment] = useState<BatimentWithDetails | null>(
+    parentSelectedBatiment || null
+  );
+  const [currentView, setCurrentView] = useState<"batiments" | "semaines">(
+    parentSelectedBatiment && parentCurrentView === "semaine" ? "semaines" : "batiments"
+  );
 
   const handleCreateBatiment = () => {
     // TODO: Implement create batiment functionality
@@ -50,11 +66,13 @@ export default function BatimentsView({ bande, ferme, onBackToBandes }: Batiment
   const handleBatimentClick = (batiment: BatimentWithDetails) => {
     setSelectedBatiment(batiment);
     setCurrentView("semaines");
+    onBatimentSelect?.(batiment);
   };
 
   const handleBackToBatiments = () => {
     setCurrentView("batiments");
     setSelectedBatiment(null);
+    onBackToBatiments?.();
   };
 
   // Si on est en mode semaines, afficher la vue des semaines

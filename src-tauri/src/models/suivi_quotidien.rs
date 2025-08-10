@@ -4,15 +4,14 @@ use serde::{Deserialize, Serialize};
 /// 
 /// Chaque entrée représente une journée de suivi avec
 /// toutes les métriques importantes pour le suivi des animaux.
+/// Les totaux sont calculés côté frontend et ne sont pas stockés.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuiviQuotidien {
     pub id: Option<i64>,
     pub semaine_id: i64,
     pub age: i32, // Âge en jours depuis l'éclosion
     pub deces_par_jour: Option<i32>,
-    pub deces_total: Option<i32>,
     pub alimentation_par_jour: Option<f64>, // En kg ou autre unité
-    pub alimentation_total: Option<f64>,
     pub soins_id: Option<i64>,
     pub soins_quantite: Option<String>, // Quantité avec unité (ex: "5l", "2kg")
     pub analyses: Option<String>,
@@ -28,9 +27,7 @@ pub struct CreateSuiviQuotidien {
     pub semaine_id: i64,
     pub age: i32,
     pub deces_par_jour: Option<i32>,
-    pub deces_total: Option<i32>,
     pub alimentation_par_jour: Option<f64>,
-    pub alimentation_total: Option<f64>,
     pub soins_id: Option<i64>,
     pub soins_quantite: Option<String>,
     pub analyses: Option<String>,
@@ -47,9 +44,7 @@ pub struct UpdateSuiviQuotidien {
     pub semaine_id: i64,
     pub age: i32,
     pub deces_par_jour: Option<i32>,
-    pub deces_total: Option<i32>,
     pub alimentation_par_jour: Option<f64>,
-    pub alimentation_total: Option<f64>,
     pub soins_id: Option<i64>,
     pub soins_quantite: Option<String>,
     pub analyses: Option<String>,
@@ -60,15 +55,15 @@ pub struct UpdateSuiviQuotidien {
 /// 
 /// Inclut le nom des soins pour un affichage complet
 /// sans nécessiter de requêtes supplémentaires côté frontend.
+/// Les totaux (deces_total, alimentation_total) sont calculés uniquement
+/// côté frontend et ne font pas partie de cette structure.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SuiviQuotidienWithDetails {
     pub id: Option<i64>,
     pub semaine_id: i64,
     pub age: i32,
     pub deces_par_jour: Option<i32>,
-    pub deces_total: Option<i32>,
     pub alimentation_par_jour: Option<f64>,
-    pub alimentation_total: Option<f64>,
     pub soins_id: Option<i64>,
     pub soins_nom: Option<String>,
     pub soins_quantite: Option<String>,

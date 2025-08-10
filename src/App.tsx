@@ -11,7 +11,7 @@ import Poussins from "./pages/poussins/Poussins";
 import Medicaments from "./pages/medicaments/Medicaments";
 import Maladies from "./pages/maladies/Maladies";
 import ProfilePage from "./pages/profile/ProfilePage";
-import { Ferme, BandeWithDetails } from "@/types";
+import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
 import "./App.css";
 
 interface NavItem {
@@ -28,9 +28,13 @@ function AuthenticatedApp() {
   const [selectedFerme, setSelectedFerme] = useState<Ferme | null>(null);
   const [latestBandes, setLatestBandes] = useState<BandeWithDetails[]>([]);
   const [selectedBande, setSelectedBande] = useState<BandeWithDetails | null>(null);
+  const [batiments, setBatiments] = useState<BatimentWithDetails[]>([]);
+  const [selectedBatiment, setSelectedBatiment] = useState<BatimentWithDetails | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const [currentView, setCurrentView] = useState<"ferme" | "bande" | "batiment">("ferme");
+  const [currentView, setCurrentView] = useState<"ferme" | "bande" | "batiment" | "semaine">(
+    "ferme"
+  );
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -71,14 +75,31 @@ function AuthenticatedApp() {
     }
   };
 
+  /**
+   * Charge les bâtiments d'une bande pour le sélecteur
+   */
+  const loadBatiments = async (bandeId: number) => {
+    try {
+      const result = await invoke<BatimentWithDetails[]>("get_batiments_by_bande", {
+        bandeId,
+      });
+      setBatiments(result);
+    } catch (error) {
+      console.error("Impossible de charger les bâtiments:", error);
+      setBatiments([]);
+    }
+  };
+
   const handleFermeChange = (ferme: Ferme) => {
     setSelectedFerme(ferme);
 
     // Charger les dernières bandes pour le sélecteur
     loadLatestBandes(ferme.id);
 
-    // Réinitialiser la bande sélectionnée
+    // Réinitialiser la bande et le bâtiment sélectionnés
     setSelectedBande(null);
+    setSelectedBatiment(null);
+    setBatiments([]);
 
     // Passer au niveau bandes
     setCurrentView("bande");
@@ -91,18 +112,39 @@ function AuthenticatedApp() {
   const handleBackToFermes = () => {
     setSelectedFerme(null);
     setSelectedBande(null);
+    setSelectedBatiment(null);
     setLatestBandes([]);
+    setBatiments([]);
     setCurrentView("ferme"); // Back to ferme view
   };
 
   const handleBandeChange = (bande: BandeWithDetails) => {
     setSelectedBande(bande);
+    setSelectedBatiment(null); // Reset batiment when bande changes
+
+    // Load batiments for the selected bande
+    if (bande.id) {
+      loadBatiments(bande.id);
+    }
+
     setCurrentView("batiment"); // When a bande is selected, we go to batiment view
   };
 
   const handleBackToBandes = () => {
     setSelectedBande(null);
+    setSelectedBatiment(null);
+    setBatiments([]);
     setCurrentView("bande"); // Back to bande view
+  };
+
+  const handleBatimentChange = (batiment: BatimentWithDetails) => {
+    setSelectedBatiment(batiment);
+    setCurrentView("semaine"); // When a batiment is selected, we go to semaine view
+  };
+
+  const handleBackToBatiments = () => {
+    setSelectedBatiment(null);
+    setCurrentView("batiment"); // Back to batiment view
   };
 
   const handleAccountClick = () => {
@@ -127,6 +169,9 @@ function AuthenticatedApp() {
         latestBandes={latestBandes}
         selectedBande={selectedBande}
         onBandeChange={handleBandeChange}
+        batiments={batiments}
+        selectedBatiment={selectedBatiment}
+        onBatimentChange={handleBatimentChange}
         onNewFerme={handleNewFerme}
         onRefreshFermes={loadFermes}
         onRefreshBandes={() => {
@@ -157,6 +202,9 @@ function AuthenticatedApp() {
                 selectedBande={selectedBande}
                 onBandeSelect={handleBandeChange}
                 onBackToBandes={handleBackToBandes}
+                selectedBatiment={selectedBatiment}
+                onBatimentSelect={handleBatimentChange}
+                onBackToBatiments={handleBackToBatiments}
                 currentView={currentView}
                 onRefreshFermes={loadFermes}
                 onRefreshBandes={() => selectedFerme && loadLatestBandes(selectedFerme.id)}

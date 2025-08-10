@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import WindowControls from "@/components/ui/window-controls";
 import { useAuth } from "@/contexts/AuthContext";
-import { Ferme, BandeWithDetails } from "@/types";
+import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
 
 interface NavItem {
   id: string;
@@ -26,11 +26,14 @@ interface HeaderProps {
   selectedBande?: BandeWithDetails | null;
   onBandeChange?: (bande: BandeWithDetails) => void;
   latestBandes?: BandeWithDetails[]; // Latest 10 bandes for suggestions
+  selectedBatiment?: BatimentWithDetails | null;
+  onBatimentChange?: (batiment: BatimentWithDetails) => void;
+  batiments?: BatimentWithDetails[]; // Batiments for the selected bande
   onNewFerme?: () => void;
   onRefreshFermes?: () => void;
   onRefreshBandes?: () => void;
   showBreadcrumb?: boolean;
-  breadcrumbLevel?: "ferme" | "bande" | "batiment";
+  breadcrumbLevel?: "ferme" | "bande" | "batiment" | "semaine";
   navItems: NavItem[];
   searchValue: string;
   onSearchChange: (value: string) => void;
@@ -44,6 +47,9 @@ export default function Header({
   selectedBande,
   onBandeChange,
   latestBandes = [],
+  selectedBatiment,
+  onBatimentChange,
+  batiments = [],
   showBreadcrumb = false,
   breadcrumbLevel = "ferme",
   navItems,
@@ -199,11 +205,52 @@ export default function Header({
               </>
             )}
 
-            {/* Show separator and batiments text if we're at batiment level */}
-            {breadcrumbLevel === "batiment" && (
+            {/* Show separator and batiment selector if we're at batiment level or deeper */}
+            {(breadcrumbLevel === "batiment" || breadcrumbLevel === "semaine") && (
               <>
                 <Slash className="w-3 h-3 text-muted-foreground -rotate-24" />
-                <span className="font-medium text-foreground">Bâtiments</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex cursor-pointer items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
+                      <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+                        {selectedBatiment
+                          ? `Bâtiment ${selectedBatiment.numero_batiment}`
+                          : "Sélectionner un bâtiment"}
+                      </span>
+                      <ChevronsUpDown className="w-3 h-3 flex-shrink-0" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-56">
+                    {batiments.map((batiment) => (
+                      <DropdownMenuItem
+                        key={batiment.id}
+                        onClick={() => onBatimentChange?.(batiment)}
+                        className="cursor-pointer flex items-center justify-between p-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <div className="w-5 h-5 rounded bg-green-100 flex items-center justify-center">
+                            <span className="text-xs font-medium text-green-600">
+                              {batiment.numero_batiment}
+                            </span>
+                          </div>
+                          <span className="font-medium text-foreground">
+                            Bâtiment {batiment.numero_batiment} - {batiment.poussin_nom} (
+                            {batiment.quantite})
+                          </span>
+                        </div>
+                        {selectedBatiment?.id === batiment.id && (
+                          <Check className="w-3 h-3 text-muted-foreground" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+
+                    {batiments.length === 0 && (
+                      <DropdownMenuItem disabled className="p-2 text-muted-foreground">
+                        Aucun bâtiment disponible
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </div>

@@ -40,7 +40,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import Bandes from "./bandes/Bandes";
-import { Ferme, CreateFerme, UpdateFerme, BandeWithDetails } from "@/types";
+import { Ferme, CreateFerme, UpdateFerme, BandeWithDetails, BatimentWithDetails } from "@/types";
 
 interface FermesPageProps {
   selectedFerme: Ferme | null;
@@ -51,7 +51,10 @@ interface FermesPageProps {
   selectedBande: BandeWithDetails | null;
   onBandeSelect: (bande: BandeWithDetails) => void;
   onBackToBandes: () => void;
-  currentView: "ferme" | "bande" | "batiment";
+  selectedBatiment?: BatimentWithDetails | null;
+  onBatimentSelect?: (batiment: BatimentWithDetails) => void;
+  onBackToBatiments?: () => void;
+  currentView: "ferme" | "bande" | "batiment" | "semaine";
   onRefreshFermes?: () => void;
   onRefreshBandes?: () => void;
 }
@@ -81,6 +84,9 @@ export default function Fermes({
   selectedBande,
   onBandeSelect,
   onBackToBandes,
+  selectedBatiment,
+  onBatimentSelect,
+  onBackToBatiments,
   currentView,
   onRefreshFermes,
   onRefreshBandes,
@@ -257,6 +263,11 @@ export default function Fermes({
         selectedBande={selectedBande}
         onBandeSelect={onBandeSelect}
         onBackToFermes={onBackToFermes}
+        selectedBatiment={selectedBatiment}
+        onBatimentSelect={onBatimentSelect}
+        onBackToBandes={onBackToBandes}
+        onBackToBatiments={onBackToBatiments}
+        currentView={currentView}
         onRefreshBandes={onRefreshBandes}
       />
     );

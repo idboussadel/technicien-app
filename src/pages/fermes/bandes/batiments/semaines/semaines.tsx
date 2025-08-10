@@ -18,12 +18,14 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import toast from "react-hot-toast";
 import {
   BatimentWithDetails,
   Ferme,
   BandeWithDetails,
   SemaineWithDetails,
   SuiviQuotidienWithDetails,
+  SuiviQuotidienWithTotals,
   Soin,
 } from "@/types";
 import { useState, useEffect } from "react";
@@ -118,6 +120,40 @@ export default function SemainesView({
   }, [semaines]);
 
   /**
+   * Calcule les totaux pour un suivi spécifique en se basant sur les données brutes du backend
+   */
+  const calculateTotalsForSuivi = (
+    allSemaines: SemaineWithDetails[],
+    currentSemaineNumber: number,
+    currentAge: number
+  ) => {
+    let deces_total = 0;
+    let alimentation_total = 0;
+
+    // Parcourir toutes les semaines jusqu'à la semaine actuelle
+    for (const semaine of allSemaines) {
+      if (semaine.numero_semaine < currentSemaineNumber) {
+        // Additionner tous les décès et alimentation de cette semaine
+        for (const suivi of semaine.suivi_quotidien) {
+          deces_total += suivi.deces_par_jour || 0;
+          alimentation_total += suivi.alimentation_par_jour || 0;
+        }
+      } else if (semaine.numero_semaine === currentSemaineNumber) {
+        // Pour la semaine actuelle, additionner jusqu'à l'âge actuel (inclus)
+        for (const suivi of semaine.suivi_quotidien) {
+          if (suivi.age <= currentAge) {
+            deces_total += suivi.deces_par_jour || 0;
+            alimentation_total += suivi.alimentation_par_jour || 0;
+          }
+        }
+        break;
+      }
+    }
+
+    return { deces_total, alimentation_total };
+  };
+
+  /**
    * Charge les semaines d'un bâtiment avec leurs suivis quotidiens
    * Utilise la nouvelle commande qui gère automatiquement la création des données manquantes
    */
@@ -128,10 +164,98 @@ export default function SemainesView({
         batimentId,
       });
 
-      setSemaines(fullSemaines);
+      // Ajouter les totaux calculés à chaque suivi quotidien
+      const semainesWithTotals = fullSemaines.map((semaine) => ({
+        ...semaine,
+        suivi_quotidien: semaine.suivi_quotidien.map((suivi) => {
+          // Calculer les totaux pour ce suivi spécifique
+          const totals = calculateTotalsForSuivi(fullSemaines, semaine.numero_semaine, suivi.age);
+          return {
+            ...suivi,
+            deces_total: totals.deces_total,
+            alimentation_total: totals.alimentation_total,
+          };
+        }),
+      }));
+
+      setSemaines(semainesWithTotals);
     } catch (error) {
       console.error("Erreur lors du chargement des semaines:", error);
     }
+  };
+
+  /**
+   * Vérifie si une cellule peut être éditée selon les règles de progression
+   */
+  const canEditCell = (
+    semaineId: number,
+    age: number,
+    field: keyof SuiviQuotidienWithTotals
+  ): boolean => {
+    // Les colonnes totales ne sont jamais éditables
+    if (field === "deces_total" || field === "alimentation_total") {
+      return false;
+    }
+
+    // Pour tous les autres champs, vérifier les règles de progression
+    const currentSemaine = semaines.find((s) => s.id === semaineId);
+    if (!currentSemaine) return false;
+
+    const currentSuivi = currentSemaine.suivi_quotidien.find((s) => s.age === age);
+    if (!currentSuivi) return false;
+
+    // Pour le premier jour de la première semaine, toujours autorisé
+    if (currentSemaine.numero_semaine === 1 && age === 1) {
+      return true;
+    }
+
+    // Pour le premier jour d'une semaine (sauf la première semaine)
+    if (age === 1 && currentSemaine.numero_semaine > 1) {
+      // Vérifier que la dernière ligne de la semaine précédente contient des données
+      const previousSemaine = semaines.find(
+        (s) => s.numero_semaine === currentSemaine.numero_semaine - 1
+      );
+      if (previousSemaine) {
+        const lastDayOfPreviousSemaine = previousSemaine.suivi_quotidien
+          .slice()
+          .sort((a, b) => b.age - a.age)[0]; // Dernier jour par âge
+
+        // Vérifier si la dernière ligne a des données (au moins un champ EDITABLE rempli)
+        const hasData =
+          lastDayOfPreviousSemaine &&
+          (lastDayOfPreviousSemaine.deces_par_jour !== null ||
+            lastDayOfPreviousSemaine.alimentation_par_jour !== null ||
+            lastDayOfPreviousSemaine.soins_id !== null ||
+            lastDayOfPreviousSemaine.soins_quantite !== null ||
+            lastDayOfPreviousSemaine.analyses !== null ||
+            lastDayOfPreviousSemaine.remarques !== null);
+
+        if (!hasData) {
+          return false;
+        }
+      }
+    }
+
+    // Pour les autres jours de la semaine
+    if (age > 1) {
+      // Vérifier que la ligne précédente (âge - 1) contient des données
+      const previousSuivi = currentSemaine.suivi_quotidien.find((s) => s.age === age - 1);
+      if (previousSuivi) {
+        const hasData =
+          previousSuivi.deces_par_jour !== null ||
+          previousSuivi.alimentation_par_jour !== null ||
+          previousSuivi.soins_id !== null ||
+          previousSuivi.soins_quantite !== null ||
+          previousSuivi.analyses !== null ||
+          previousSuivi.remarques !== null;
+
+        if (!hasData) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   };
 
   /**
@@ -144,6 +268,17 @@ export default function SemainesView({
     currentValue: any,
     originalValue?: any
   ) => {
+    // Vérifier si la cellule peut être éditée
+    if (!canEditCell(semaineId, age, field)) {
+      // Afficher un message d'erreur approprié
+      if (field === "deces_total" || field === "alimentation_total") {
+        toast.error("Cette colonne est calculée automatiquement et ne peut pas être modifiée");
+      } else {
+        toast.error("Veuillez d'abord remplir les données précédentes avant de continuer");
+      }
+      return;
+    }
+
     setEditingCell({ semaineId, age, field });
 
     // For soins_id field, use the original ID value, not the displayed name
@@ -283,6 +418,37 @@ export default function SemainesView({
   };
 
   /**
+   * Calcule les valeurs totales pour un suivi donné
+   */
+  const calculateTotals = (currentSemaine: SemaineWithDetails, currentAge: number) => {
+    // Calculer décès total
+    let deces_total = 0;
+    let alimentation_total = 0;
+
+    // Parcourir toutes les semaines jusqu'à la semaine actuelle
+    for (const semaine of semaines) {
+      if (semaine.numero_semaine < currentSemaine.numero_semaine) {
+        // Additionner tous les décès de cette semaine
+        for (const suivi of semaine.suivi_quotidien) {
+          deces_total += suivi.deces_par_jour || 0;
+          alimentation_total += suivi.alimentation_par_jour || 0;
+        }
+      } else if (semaine.numero_semaine === currentSemaine.numero_semaine) {
+        // Pour la semaine actuelle, additionner jusqu'à l'âge actuel
+        for (const suivi of semaine.suivi_quotidien) {
+          if (suivi.age <= currentAge) {
+            deces_total += suivi.deces_par_jour || 0;
+            alimentation_total += suivi.alimentation_par_jour || 0;
+          }
+        }
+        break;
+      }
+    }
+
+    return { deces_total, alimentation_total };
+  };
+
+  /**
    * Génère la date pour un âge donné (approximative)
    */
   const getDateForAge = (age: number): string => {
@@ -356,13 +522,15 @@ export default function SemainesView({
                           Décès (Jour)
                         </TableHead>
                         <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
-                          Décès (Total)
+                          <div className="flex items-center justify-center">Décès (Total)</div>
                         </TableHead>
                         <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
                           Alimentation (Jour)
                         </TableHead>
                         <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
-                          Alimentation (Total)
+                          <div className="flex items-center justify-center">
+                            Alimentation (Total)
+                          </div>
                         </TableHead>
                         <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
                           Soins (Traitement)
@@ -411,10 +579,36 @@ export default function SemainesView({
                             // Pour soins_id, garder la valeur originale et préparer l'affichage
                             const originalValue = suivi[fieldKey];
                             let displayValue = value;
-                            if (field === "soins_id") {
+
+                            // Pour les colonnes totales, calculer les valeurs seulement si la ligne a des données par jour
+                            if (field === "deces_total" || field === "alimentation_total") {
+                              const hasDecesData =
+                                suivi.deces_par_jour !== null && suivi.deces_par_jour !== undefined;
+                              const hasAlimentationData =
+                                suivi.alimentation_par_jour !== null &&
+                                suivi.alimentation_par_jour !== undefined;
+
+                              // Afficher le total seulement si la ligne correspondante a des données
+                              if (
+                                (field === "deces_total" && hasDecesData) ||
+                                (field === "alimentation_total" && hasAlimentationData)
+                              ) {
+                                const calculatedTotals = calculateTotals(semaine, suivi.age);
+                                displayValue =
+                                  field === "deces_total"
+                                    ? calculatedTotals.deces_total
+                                    : calculatedTotals.alimentation_total;
+                              } else {
+                                displayValue = null; // Pas de total si pas de données par jour
+                              }
+                            } else if (field === "soins_id") {
                               // Utiliser directement soins_nom au lieu de chercher dans la liste
                               displayValue = suivi.soins_nom || (value ? "Soin inconnu" : "");
                             }
+
+                            const isEditable = canEditCell(semaine.id!, suivi.age, fieldKey);
+                            const isTotalColumn =
+                              fieldKey === "deces_total" || fieldKey === "alimentation_total";
 
                             return (
                               <TableCell
@@ -422,19 +616,32 @@ export default function SemainesView({
                                 className={`text-center text-gray-700 dark:text-gray-300 p-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-white ${
                                   !isLastCellInRow ? "border-r" : ""
                                 }`}
-                                onDoubleClick={() =>
-                                  handleCellClick(
-                                    semaine.id!,
-                                    suivi.age,
-                                    fieldKey,
-                                    displayValue,
-                                    originalValue
-                                  )
-                                }
+                                onDoubleClick={() => {
+                                  if (isEditable) {
+                                    handleCellClick(
+                                      semaine.id!,
+                                      suivi.age,
+                                      fieldKey,
+                                      displayValue,
+                                      originalValue
+                                    );
+                                  }
+                                }}
                               >
                                 {isEditing ? (
                                   field === "soins_id" ? (
-                                    <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                                    <Popover
+                                      open={comboboxOpen}
+                                      onOpenChange={(open) => {
+                                        setComboboxOpen(open);
+                                        // Si le popover se ferme et qu'on n'a pas sélectionné de valeur, reset l'état d'édition
+                                        if (!open) {
+                                          setTimeout(() => {
+                                            resetEditingState();
+                                          }, 100);
+                                        }
+                                      }}
+                                    >
                                       <PopoverTrigger>
                                         <Button
                                           variant="outline"
@@ -493,20 +700,52 @@ export default function SemainesView({
                                       onChange={handleInputChange}
                                       onBlur={handleInputBlur}
                                       onKeyDown={handleInputKeyDown}
-                                      className="w-full h-full border-none focus:outline-none focus:ring-0 text-center bg-white dark:bg-white rounded-none px-4 py-2 m-0 min-h-0"
+                                      className="w-full h-full border-none focus:outline-none focus:ring-0 text-center bg-white dark:bg-white rounded-none px-4 py-2 m-0"
                                       style={{ boxShadow: "none" }}
                                       autoFocus
                                     />
                                   )
                                 ) : (
-                                  <div className="px-4 py-2 h-full w-full flex items-center justify-center cursor-pointer hover:bg-gray-50">
-                                    {displayValue !== null &&
-                                    displayValue !== undefined &&
-                                    displayValue !== ""
-                                      ? field.includes("alimentation")
-                                        ? `${displayValue} kg`
-                                        : displayValue
-                                      : "-"}
+                                  <div
+                                    className={`px-4 py-2 h-full w-full flex items-center justify-center ${
+                                      isEditable
+                                        ? "cursor-pointer hover:bg-gray-50"
+                                        : isTotalColumn
+                                        ? "cursor-default"
+                                        : "cursor-not-allowed"
+                                    }`}
+                                    title={
+                                      isTotalColumn
+                                        ? "Valeur calculée automatiquement"
+                                        : !isEditable
+                                        ? "Veuillez d'abord remplir les données précédentes"
+                                        : ""
+                                    }
+                                  >
+                                    {(() => {
+                                      // Pour les colonnes totales, ne rien afficher si la valeur est 0
+                                      if (
+                                        isTotalColumn &&
+                                        (displayValue === 0 ||
+                                          displayValue === null ||
+                                          displayValue === undefined)
+                                      ) {
+                                        return "-";
+                                      }
+
+                                      // Pour les autres colonnes, affichage normal
+                                      if (
+                                        displayValue !== null &&
+                                        displayValue !== undefined &&
+                                        displayValue !== ""
+                                      ) {
+                                        return field.includes("alimentation")
+                                          ? `${displayValue} kg`
+                                          : displayValue;
+                                      }
+
+                                      return "-";
+                                    })()}
                                   </div>
                                 )}
                               </TableCell>
@@ -527,19 +766,19 @@ export default function SemainesView({
                     return (
                       <>
                         <div
-                          className="w-26 px-4 py-2 text-center font-medium text-gray-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-100 border border-slate-200 dark:border-slate-700 flex items-center justify-center border-l-0"
+                          className="w-32 px-4 py-2 text-center font-medium text-gray-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-100 border border-slate-200 dark:border-slate-700 flex items-center justify-center border-l-0"
                           style={{ minHeight: 54, height: h6 + 1 }}
                         >
                           Poids
                         </div>
                         <div
-                          className="w-26 text-center text-gray-700 dark:text-gray-300 bg-white dark:bg-white border border-t-0 border-slate-200 dark:border-slate-700 border-l-0 border-b-2 flex items-center justify-center"
+                          className="w-32 text-center text-gray-700 dark:text-gray-300 bg-white dark:bg-white border border-t-0 border-slate-200 dark:border-slate-700 border-l-0 border-b-2 flex items-center justify-center"
                           style={{ minHeight: 54, height: h7 + 1 }}
                         >
                           {editingPoids?.semaineId === semaine.id ? (
                             <Input
                               type="number"
-                              step="0.1"
+                              step="0.01"
                               value={poidsValue}
                               onChange={(e) => setPoidsValue(e.target.value)}
                               onKeyDown={handlePoidsKeyDown}

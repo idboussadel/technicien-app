@@ -57,17 +57,19 @@ pub async fn get_latest_bandes_by_ferme(
         .map_err(|e| e.to_string())
 }
 
-/// Get bandes by ferme with pagination
+/// Get bandes by ferme with pagination and optional date range filtering
 #[tauri::command]
 pub async fn get_bandes_by_ferme_paginated(
     db: State<'_, Arc<DatabaseManager>>,
     ferme_id: i64,
     page: u32,
     per_page: u32,
+    date_from: Option<String>, // Format: "YYYY-MM-DD"
+    date_to: Option<String>,   // Format: "YYYY-MM-DD"
 ) -> Result<PaginatedBandes, String> {
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     
-    BandeRepository::get_by_ferme_paginated(&conn, ferme_id, page, per_page)
+    BandeRepository::get_by_ferme_paginated(&conn, ferme_id, page, per_page, date_from, date_to)
         .map_err(|e| e.to_string())
 }
 

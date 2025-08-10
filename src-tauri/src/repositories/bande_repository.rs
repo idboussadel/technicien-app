@@ -182,33 +182,67 @@ impl BandeRepository {
         Ok(bandes)
     }
 
-    /// Get bandes by ferme with pagination
+    /// Get bandes by ferme with pagination and optional date range filtering
     pub fn get_by_ferme_paginated(
         conn: &PooledConnection<SqliteConnectionManager>,
         ferme_id: i64,
         page: u32,
         per_page: u32,
+        date_from: Option<String>,
+        date_to: Option<String>,
     ) -> Result<PaginatedBandes, AppError> {
         let offset = (page - 1) * per_page;
         
-        // Count total records for this ferme
-        let total: u32 = conn.query_row(
-            "SELECT COUNT(*) FROM bandes b WHERE b.ferme_id = ?1",
-            [ferme_id],
-            |row| row.get::<_, i64>(0)
-        )? as u32;
+        // Build the WHERE clause based on date filters
+        let mut where_conditions = vec!["b.ferme_id = ?1".to_string()];
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(ferme_id)];
+        let mut param_index = 2;
         
-        // Get paginated data
-        let mut stmt = conn.prepare(
+        if let Some(from_date) = &date_from {
+            where_conditions.push(format!("b.date_entree >= ?{}", param_index));
+            params.push(Box::new(from_date.clone()));
+            param_index += 1;
+        }
+        
+        if let Some(to_date) = &date_to {
+            where_conditions.push(format!("b.date_entree <= ?{}", param_index));
+            params.push(Box::new(to_date.clone()));
+            param_index += 1;
+        }
+        
+        let where_clause = where_conditions.join(" AND ");
+        
+        // Count total records with filters
+        let count_query = format!(
+            "SELECT COUNT(*) FROM bandes b WHERE {}",
+            where_clause
+        );
+        
+        let total: u32 = {
+            let mut stmt = conn.prepare(&count_query)?;
+            let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+            stmt.query_row(&params_refs[..], |row| row.get::<_, i64>(0))?
+        } as u32;
+        
+        // Get paginated data with filters
+        let select_query = format!(
             "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
-             WHERE b.ferme_id = ?1
+             WHERE {}
              ORDER BY b.date_entree DESC
-             LIMIT ?2 OFFSET ?3"
-        )?;
+             LIMIT ?{} OFFSET ?{}",
+            where_clause, param_index, param_index + 1
+        );
         
-        let bandes_result = stmt.query_map([ferme_id, per_page as i64, offset as i64], |row| {
+        // Add LIMIT and OFFSET parameters
+        params.push(Box::new(per_page as i64));
+        params.push(Box::new(offset as i64));
+        
+        let mut stmt = conn.prepare(&select_query)?;
+        let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        
+        let bandes_result = stmt.query_map(&params_refs[..], |row| {
             Ok((
                 row.get::<_, i64>(0)?,
                 row.get::<_, String>(1)?,
@@ -237,6 +271,111 @@ impl BandeRepository {
             });
         }
 
+        let total_pages = (total + per_page - 1) / per_page;
+        let has_next = page < total_pages;
+        let has_prev = page > 1;
+
+        Ok(PaginatedBandes {
+            data: bandes,
+            total,
+            page,
+            limit: per_page,
+            total_pages,
+            has_next,
+            has_prev,
+        })
+    }
+
+    /// Get bandes by ferme with pagination and date range filtering
+    pub fn get_by_ferme_paginated_with_date_filter(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        ferme_id: i64,
+        page: u32,
+        per_page: u32,
+        date_from: Option<String>,
+        date_to: Option<String>,
+    ) -> Result<PaginatedBandes, AppError> {
+        let offset = (page - 1) * per_page;
+        
+        // Build the WHERE clause based on date filters
+        let mut where_conditions = vec!["b.ferme_id = ?1".to_string()];
+        let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(ferme_id)];
+        let mut param_index = 2;
+        
+        if let Some(from_date) = &date_from {
+            where_conditions.push(format!("b.date_entree >= ?{}", param_index));
+            params.push(Box::new(from_date.clone()));
+            param_index += 1;
+        }
+        
+        if let Some(to_date) = &date_to {
+            where_conditions.push(format!("b.date_entree <= ?{}", param_index));
+            params.push(Box::new(to_date.clone()));
+            param_index += 1;
+        }
+        
+        let where_clause = where_conditions.join(" AND ");
+        
+        // Count total records with filters
+        let count_query = format!(
+            "SELECT COUNT(*) FROM bandes b WHERE {}",
+            where_clause
+        );
+        
+        let total: u32 = {
+            let mut stmt = conn.prepare(&count_query)?;
+            let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+            stmt.query_row(&params_refs[..], |row| row.get::<_, i64>(0))?
+        } as u32;
+        
+        // Get paginated data with filters
+        let select_query = format!(
+            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+             FROM bandes b
+             JOIN fermes f ON b.ferme_id = f.id
+             WHERE {}
+             ORDER BY b.date_entree DESC
+             LIMIT ?{} OFFSET ?{}",
+            where_clause, param_index, param_index + 1
+        );
+        
+        // Add LIMIT and OFFSET parameters
+        params.push(Box::new(per_page as i64));
+        params.push(Box::new(offset as i64));
+        
+        let mut stmt = conn.prepare(&select_query)?;
+        let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        
+        let bandes_result = stmt.query_map(&params_refs[..], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+        let mut bandes = Vec::new();
+        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+            let date_entree = date_entree_str.parse().map_err(|_| {
+                AppError::business_logic("Format de date invalide dans la base de données")
+            })?;
+            let batiments = Self::load_batiments(conn, id)?;
+            let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
+            bandes.push(BandeWithDetails {
+                id: Some(id),
+                date_entree,
+                ferme_id,
+                ferme_nom,
+                notes,
+                batiments,
+                alimentation_contour,
+            });
+        }
+
+        // Calculate pagination metadata
         let total_pages = (total + per_page - 1) / per_page;
         let has_next = page < total_pages;
         let has_prev = page > 1;

@@ -151,18 +151,29 @@ pub async fn upsert_suivi_quotidien_field(
 ) -> Result<SuiviQuotidien, String> {
     let repository = SuiviQuotidienRepository::new(db.inner().clone());
     
-    // D'abord, vérifier que la semaine existe
+    // D'abord, vérifier que la semaine existe et récupérer la bande_id
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     
-    let semaine_exists: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM semaines WHERE id = ?1",
+    let (semaine_exists, bande_id): (i64, i64) = conn.query_row(
+        "SELECT COUNT(*), COALESCE(MAX(s.batiment_id), 0) as batiment_id
+         FROM semaines s 
+         WHERE s.id = ?1",
         [semaine_id],
-        |row| row.get(0),
+        |row| Ok((row.get(0)?, row.get(1)?)),
     ).map_err(|e| e.to_string())?;
 
     if semaine_exists == 0 {
         return Err(format!("La semaine avec l'ID {} n'existe pas", semaine_id));
     }
+
+    // Récupérer la bande_id à partir du batiment_id
+    let bande_id: i64 = conn.query_row(
+        "SELECT bande_id FROM batiments b 
+         JOIN semaines s ON s.batiment_id = b.id 
+         WHERE s.id = ?1",
+        [semaine_id],
+        |row| row.get(0),
+    ).map_err(|e| e.to_string())?;
     
     let existing_id: Option<i64> = match conn.query_row(
         "SELECT id FROM suivi_quotidien WHERE semaine_id = ?1 AND age = ?2",
@@ -183,21 +194,34 @@ pub async fn upsert_suivi_quotidien_field(
             semaine_id: current.semaine_id,
             age: current.age,
             deces_par_jour: current.deces_par_jour,
-            deces_total: current.deces_total,
             alimentation_par_jour: current.alimentation_par_jour,
-            alimentation_total: current.alimentation_total,
             soins_id: current.soins_id,
             soins_quantite: current.soins_quantite,
             analyses: current.analyses,
             remarques: current.remarques,
         };
         
-        // Mettre à jour le champ spécifique
+        // Mettre à jour le champ spécifique et gérer alimentation_contour
         match field.as_str() {
             "deces_par_jour" => update_suivi.deces_par_jour = value.parse().ok(),
-            "deces_total" => update_suivi.deces_total = value.parse().ok(),
-            "alimentation_par_jour" => update_suivi.alimentation_par_jour = value.parse().ok(),
-            "alimentation_total" => update_suivi.alimentation_total = value.parse().ok(),
+            "alimentation_par_jour" => {
+                let old_value = current.alimentation_par_jour.unwrap_or(0.0);
+                let new_value: f64 = value.parse().unwrap_or(0.0);
+                
+                // Calculer la différence pour ajuster alimentation_contour
+                let difference = new_value - old_value;
+                
+                // Mettre à jour le suivi quotidien
+                update_suivi.alimentation_par_jour = if value.is_empty() { None } else { Some(new_value) };
+                
+                // Mettre à jour alimentation_contour (soustraire la différence car on consomme)
+                if difference != 0.0 {
+                    conn.execute(
+                        "UPDATE bandes SET alimentation_contour = alimentation_contour - ?1 WHERE id = ?2",
+                        rusqlite::params![difference, bande_id],
+                    ).map_err(|e| e.to_string())?;
+                }
+            },
             "soins_id" => {
                 if value.is_empty() {
                     update_suivi.soins_id = None;
@@ -235,9 +259,7 @@ pub async fn upsert_suivi_quotidien_field(
             semaine_id,
             age,
             deces_par_jour: None,
-            deces_total: None,
             alimentation_par_jour: None,
-            alimentation_total: None,
             soins_id: None,
             soins_quantite: None,
             analyses: None,
@@ -247,9 +269,20 @@ pub async fn upsert_suivi_quotidien_field(
         // Définir le champ spécifique
         match field.as_str() {
             "deces_par_jour" => create_suivi.deces_par_jour = value.parse().ok(),
-            "deces_total" => create_suivi.deces_total = value.parse().ok(),
-            "alimentation_par_jour" => create_suivi.alimentation_par_jour = value.parse().ok(),
-            "alimentation_total" => create_suivi.alimentation_total = value.parse().ok(),
+            "alimentation_par_jour" => {
+                let new_value: f64 = value.parse().unwrap_or(0.0);
+                
+                // Mettre à jour le suivi quotidien
+                create_suivi.alimentation_par_jour = if value.is_empty() { None } else { Some(new_value) };
+                
+                // Mettre à jour alimentation_contour (soustraire car on consomme)
+                if new_value > 0.0 {
+                    conn.execute(
+                        "UPDATE bandes SET alimentation_contour = alimentation_contour - ?1 WHERE id = ?2",
+                        rusqlite::params![new_value, bande_id],
+                    ).map_err(|e| e.to_string())?;
+                }
+            },
             "soins_id" => {
                 if value.is_empty() {
                     create_suivi.soins_id = None;

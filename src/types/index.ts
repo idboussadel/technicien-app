@@ -223,23 +223,20 @@ export interface SuiviQuotidien {
   semaine_id: number;
   age: number;
   deces_par_jour: number | null;
-  deces_total: number | null;
   alimentation_par_jour: number | null;
-  alimentation_total: number | null;
   soins_id: number | null;
   soins_quantite: string | null;
   analyses: string | null;
   remarques: string | null;
 }
 
+// Base interface from backend - NO total fields
 export interface SuiviQuotidienWithDetails {
   id: number | null;
   semaine_id: number;
   age: number;
   deces_par_jour: number | null;
-  deces_total: number | null;
   alimentation_par_jour: number | null;
-  alimentation_total: number | null;
   soins_id: number | null;
   soins_nom: string | null;
   soins_quantite: string | null;
@@ -247,13 +244,17 @@ export interface SuiviQuotidienWithDetails {
   remarques: string | null;
 }
 
+// Extended interface for frontend with calculated total fields
+export interface SuiviQuotidienWithTotals extends SuiviQuotidienWithDetails {
+  deces_total?: number | null; // Calculated in frontend only
+  alimentation_total?: number | null; // Calculated in frontend only
+}
+
 export interface CreateSuiviQuotidien {
   semaine_id: number;
   age: number;
   deces_par_jour: number | null;
-  deces_total: number | null;
   alimentation_par_jour: number | null;
-  alimentation_total: number | null;
   soins_id: number | null;
   soins_quantite: string | null;
   analyses: string | null;
@@ -265,9 +266,7 @@ export interface UpdateSuiviQuotidien {
   semaine_id: number;
   age: number;
   deces_par_jour: number | null;
-  deces_total: number | null;
   alimentation_par_jour: number | null;
-  alimentation_total: number | null;
   soins_id: number | null;
   soins_quantite: string | null;
   analyses: string | null;
@@ -280,7 +279,7 @@ export interface SemaineWithDetails {
   batiment_id: number;
   numero_semaine: number;
   poids: number | null;
-  suivi_quotidien: SuiviQuotidienWithDetails[];
+  suivi_quotidien: SuiviQuotidienWithTotals[]; // Use extended type with totals for frontend
 }
 
 export interface BatimentWithSemaines {

@@ -44,17 +44,15 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         // Insertion du suivi quotidien
         conn.execute(
             "INSERT INTO suivi_quotidien (
-                semaine_id, age, deces_par_jour, deces_total, 
-                alimentation_par_jour, alimentation_total, 
+                semaine_id, age, deces_par_jour, 
+                alimentation_par_jour, 
                 soins_id, soins_quantite, analyses, remarques
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             rusqlite::params![
                 suivi.semaine_id,
                 suivi.age,
                 suivi.deces_par_jour,
-                suivi.deces_total,
                 suivi.alimentation_par_jour,
-                suivi.alimentation_total,
                 suivi.soins_id,
                 suivi.soins_quantite,
                 suivi.analyses,
@@ -69,9 +67,7 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
             semaine_id: suivi.semaine_id,
             age: suivi.age,
             deces_par_jour: suivi.deces_par_jour,
-            deces_total: suivi.deces_total,
             alimentation_par_jour: suivi.alimentation_par_jour,
-            alimentation_total: suivi.alimentation_total,
             soins_id: suivi.soins_id,
             soins_quantite: suivi.soins_quantite,
             analyses: suivi.analyses,
@@ -83,8 +79,8 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         let conn = self.db.get_connection()?;
         
         let mut stmt = conn.prepare(
-            "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour, sq.deces_total,
-                    sq.alimentation_par_jour, sq.alimentation_total, sq.soins_id, 
+            "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour,
+                    sq.alimentation_par_jour, sq.soins_id, 
                     s.nom as soins_nom, sq.soins_quantite, sq.analyses, sq.remarques
              FROM suivi_quotidien sq
              LEFT JOIN soins s ON sq.soins_id = s.id
@@ -97,14 +93,12 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 semaine_id: row.get(1)?,
                 age: row.get(2)?,
                 deces_par_jour: row.get(3)?,
-                deces_total: row.get(4)?,
-                alimentation_par_jour: row.get(5)?,
-                alimentation_total: row.get(6)?,
-                soins_id: row.get(7)?,
-                soins_nom: row.get(8)?,
-                soins_quantite: row.get(9)?,
-                analyses: row.get(10)?,
-                remarques: row.get(11)?,
+                alimentation_par_jour: row.get(4)?,
+                soins_id: row.get(5)?,
+                soins_nom: row.get(6)?,
+                soins_quantite: row.get(7)?,
+                analyses: row.get(8)?,
+                remarques: row.get(9)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -116,8 +110,8 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         let conn = self.db.get_connection()?;
         
         let suivi = conn.query_row(
-            "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour, sq.deces_total,
-                    sq.alimentation_par_jour, sq.alimentation_total, sq.soins_id, 
+            "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour,
+                    sq.alimentation_par_jour, sq.soins_id, 
                     s.nom as soins_nom, sq.soins_quantite, sq.analyses, sq.remarques
              FROM suivi_quotidien sq
              LEFT JOIN soins s ON sq.soins_id = s.id
@@ -128,14 +122,12 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 semaine_id: row.get(1)?,
                 age: row.get(2)?,
                 deces_par_jour: row.get(3)?,
-                deces_total: row.get(4)?,
-                alimentation_par_jour: row.get(5)?,
-                alimentation_total: row.get(6)?,
-                soins_id: row.get(7)?,
-                soins_nom: row.get(8)?,
-                soins_quantite: row.get(9)?,
-                analyses: row.get(10)?,
-                remarques: row.get(11)?,
+                alimentation_par_jour: row.get(4)?,
+                soins_id: row.get(5)?,
+                soins_nom: row.get(6)?,
+                soins_quantite: row.get(7)?,
+                analyses: row.get(8)?,
+                remarques: row.get(9)?,
             }),
         ).map_err(|e| match e {
             rusqlite::Error::QueryReturnedNoRows => AppError::not_found("SuiviQuotidien", id),
@@ -165,17 +157,15 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         // Mise à jour du suivi quotidien
         let rows_affected = conn.execute(
             "UPDATE suivi_quotidien SET 
-                semaine_id = ?1, age = ?2, deces_par_jour = ?3, deces_total = ?4,
-                alimentation_par_jour = ?5, alimentation_total = ?6,
-                soins_id = ?7, soins_quantite = ?8, analyses = ?9, remarques = ?10
-             WHERE id = ?11",
+                semaine_id = ?1, age = ?2, deces_par_jour = ?3,
+                alimentation_par_jour = ?4,
+                soins_id = ?5, soins_quantite = ?6, analyses = ?7, remarques = ?8
+             WHERE id = ?9",
             rusqlite::params![
                 suivi.semaine_id,
                 suivi.age,
                 suivi.deces_par_jour,
-                suivi.deces_total,
                 suivi.alimentation_par_jour,
-                suivi.alimentation_total,
                 suivi.soins_id,
                 suivi.soins_quantite,
                 suivi.analyses,
@@ -193,9 +183,7 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
             semaine_id: suivi.semaine_id,
             age: suivi.age,
             deces_par_jour: suivi.deces_par_jour,
-            deces_total: suivi.deces_total,
             alimentation_par_jour: suivi.alimentation_par_jour,
-            alimentation_total: suivi.alimentation_total,
             soins_id: suivi.soins_id,
             soins_quantite: suivi.soins_quantite,
             analyses: suivi.analyses,
@@ -222,8 +210,8 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         let conn = self.db.get_connection()?;
         
         let mut stmt = conn.prepare(
-            "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour, sq.deces_total,
-                    sq.alimentation_par_jour, sq.alimentation_total, sq.soins_id, 
+            "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour,
+                    sq.alimentation_par_jour, sq.soins_id, 
                     s.nom as soins_nom, sq.soins_quantite, sq.analyses, sq.remarques
              FROM suivi_quotidien sq
              LEFT JOIN soins s ON sq.soins_id = s.id
@@ -237,14 +225,12 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 semaine_id: row.get(1)?,
                 age: row.get(2)?,
                 deces_par_jour: row.get(3)?,
-                deces_total: row.get(4)?,
-                alimentation_par_jour: row.get(5)?,
-                alimentation_total: row.get(6)?,
-                soins_id: row.get(7)?,
-                soins_nom: row.get(8)?,
-                soins_quantite: row.get(9)?,
-                analyses: row.get(10)?,
-                remarques: row.get(11)?,
+                alimentation_par_jour: row.get(4)?,
+                soins_id: row.get(5)?,
+                soins_nom: row.get(6)?,
+                soins_quantite: row.get(7)?,
+                analyses: row.get(8)?,
+                remarques: row.get(9)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
