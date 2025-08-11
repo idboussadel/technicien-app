@@ -14,6 +14,7 @@ pub struct AlimentationHistory {
 pub struct CreateAlimentationHistory {
     pub bande_id: i64,
     pub quantite: f64, // Can be positive or negative
+    pub created_at: String, // ISO format datetime string
 }
 
 /// Data for updating an alimentation history record

@@ -208,17 +208,18 @@ pub async fn upsert_suivi_quotidien_field(
                 let old_value = current.alimentation_par_jour.unwrap_or(0.0);
                 let new_value: f64 = value.parse().unwrap_or(0.0);
                 
-                // Calculer la différence pour ajuster alimentation_contour
-                let difference = new_value - old_value;
+                // Calculer la différence pour ajuster alimentation_contour (sachets × 50 kg)
+                let difference_sachets = new_value - old_value;
+                let difference_kg = difference_sachets * 50.0;
                 
                 // Mettre à jour le suivi quotidien
                 update_suivi.alimentation_par_jour = if value.is_empty() { None } else { Some(new_value) };
                 
-                // Mettre à jour alimentation_contour (soustraire la différence car on consomme)
-                if difference != 0.0 {
+                // Mettre à jour alimentation_contour (soustraire la différence en kg car on consomme)
+                if difference_kg != 0.0 {
                     conn.execute(
                         "UPDATE bandes SET alimentation_contour = alimentation_contour - ?1 WHERE id = ?2",
-                        rusqlite::params![difference, bande_id],
+                        rusqlite::params![difference_kg, bande_id],
                     ).map_err(|e| e.to_string())?;
                 }
             },
@@ -275,11 +276,12 @@ pub async fn upsert_suivi_quotidien_field(
                 // Mettre à jour le suivi quotidien
                 create_suivi.alimentation_par_jour = if value.is_empty() { None } else { Some(new_value) };
                 
-                // Mettre à jour alimentation_contour (soustraire car on consomme)
+                // Mettre à jour alimentation_contour (soustraire en kg: sachets × 50 kg)
                 if new_value > 0.0 {
+                    let kg_value = new_value * 50.0;
                     conn.execute(
                         "UPDATE bandes SET alimentation_contour = alimentation_contour - ?1 WHERE id = ?2",
-                        rusqlite::params![new_value, bande_id],
+                        rusqlite::params![kg_value, bande_id],
                     ).map_err(|e| e.to_string())?;
                 }
             },

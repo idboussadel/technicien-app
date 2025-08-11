@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -558,7 +559,8 @@ export default function SemainesView({
     let total = 0;
     semaines.forEach((semaine) => {
       semaine.suivi_quotidien.forEach((suivi) => {
-        total += suivi.alimentation_par_jour || 0;
+        // Convert sachets to kg by multiplying by 50
+        total += (suivi.alimentation_par_jour || 0) * 50;
       });
     });
     return total;
@@ -895,9 +897,7 @@ export default function SemainesView({
                                         displayValue !== undefined &&
                                         displayValue !== ""
                                       ) {
-                                        return field.includes("alimentation")
-                                          ? `${displayValue} kg`
-                                          : displayValue;
+                                        return displayValue;
                                       }
 
                                       return "-";
@@ -977,7 +977,7 @@ export default function SemainesView({
           <div className="mt-8">
             <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
               <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-200 dark:border-slate-600">
-                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                <h2 className="font-semibold text-slate-800 dark:text-slate-200">
                   Tableau des Résultats
                 </h2>
               </div>
@@ -1012,7 +1012,11 @@ export default function SemainesView({
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const totalAlimentation = calculateTotalAlimentation();
-                          return totalAlimentation > 0 ? `${totalAlimentation.toFixed(2)} kg` : "-";
+                          if (totalAlimentation > 0) {
+                            const totalSachets = totalAlimentation / 50;
+                            return `${totalAlimentation.toFixed(2)} kg ( ${totalSachets} sacs )`;
+                          }
+                          return "-";
                         })()}
                       </div>
                     </TableCell>
@@ -1032,7 +1036,33 @@ export default function SemainesView({
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const conversionFactor = calculateConversionFactor();
-                          return conversionFactor !== null ? conversionFactor.toFixed(3) : "-";
+                          const totalAlimentation = calculateTotalAlimentation();
+                          const finalWeight = calculateFinalWeight();
+
+                          if (
+                            conversionFactor !== null &&
+                            totalAlimentation > 0 &&
+                            finalWeight !== null
+                          ) {
+                            return (
+                              <div className="flex items-center justify-center gap-3">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-sm font-mono text-gray-700 leading-none">
+                                    {totalAlimentation.toFixed(2)}
+                                  </span>
+                                  <div className="w-12 border-t border-gray-400 my-0.5"></div>
+                                  <span className="text-sm font-mono text-gray-700 leading-none">
+                                    {finalWeight}
+                                  </span>
+                                </div>
+                                <span className="text-gray-600 font-medium">=</span>
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {conversionFactor.toFixed(3)}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return "-";
                         })()}
                       </div>
                     </TableCell>
@@ -1052,7 +1082,30 @@ export default function SemainesView({
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const deathPercentage = calculateDeathPercentage();
-                          return deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-";
+                          const totalDeaths = calculateTotalDeaths();
+
+                          if (deathPercentage > 0 && totalDeaths > 0) {
+                            return (
+                              <div className="flex items-center justify-center gap-3">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-sm font-mono text-gray-700 leading-none">
+                                    {totalDeaths}
+                                  </span>
+                                  <div className="w-12 border-t border-gray-400 my-0.5"></div>
+                                  <span className="text-sm font-mono text-gray-700 leading-none">
+                                    {batiment.quantite}
+                                  </span>
+                                </div>
+                                <span className="text-gray-500">×</span>
+                                <span className="text-sm font-mono text-gray-700">100</span>
+                                <span className="text-gray-600 font-medium">=</span>
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {deathPercentage.toFixed(2)}%
+                                </span>
+                              </div>
+                            );
+                          }
+                          return "-";
                         })()}
                       </div>
                     </TableCell>

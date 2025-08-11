@@ -92,6 +92,7 @@ export interface AlimentationHistory {
 export interface CreateAlimentationHistory {
   bande_id: number;
   quantite: number;
+  created_at: string; // ISO format datetime string
 }
 
 export interface UpdateAlimentationHistory {

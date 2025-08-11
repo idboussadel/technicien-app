@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
-import { AlimentationHistoryList } from "@/components/alimentation/alimentation-history-list";
+import { AlimentationHistoryList } from "@/pages/fermes/bandes/alimentation/alimentation-history-list";
 import { useState } from "react";
 import SemainesView from "./semaines/semaines";
 

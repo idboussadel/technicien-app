@@ -28,10 +28,11 @@ impl AlimentationRepository {
 
         // Insertion de l'historique d'alimentation
         conn.execute(
-            "INSERT INTO alimentation_history (bande_id, quantite) VALUES (?1, ?2)",
+            "INSERT INTO alimentation_history (bande_id, quantite, created_at) VALUES (?1, ?2, ?3)",
             [
                 &alimentation.bande_id.to_string(),
                 &alimentation.quantite.to_string(),
+                &alimentation.created_at,
             ],
         )?;
 
