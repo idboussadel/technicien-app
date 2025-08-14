@@ -17,7 +17,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Check, ChevronsUpDown, FileDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronsUpDown, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   BatimentWithDetails,
@@ -650,34 +650,72 @@ export default function SemainesView({
     });
 
     // Configuration des marges et largeurs
-    const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 8;
 
-    // Ajouter le titre et les informations d'en-tête
-    doc.setFontSize(18);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Suivi Hebdomadaire - Bâtiment ${batiment.numero_batiment}`, pageWidth / 2, 15, {
-      align: "center",
+    let yPosition = margin;
+
+    // Ajouter le tableau de synthèse (sans en-tête)
+    const summaryData = [
+      [
+        "Date d'Entrée",
+        new Date(bande.date_entree).toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+      ],
+      ["Quantité", batiment.quantite?.toString() || "-"],
+      ["Personnel", batiment.personnel_nom || "-"],
+      ["Poussin", batiment.poussin_nom || "-"],
+      ["Bâtiment", batiment.numero_batiment?.toString() || "-"],
+      ["Ferme", ferme.nom || "-"],
+    ];
+
+    autoTable(doc, {
+      body: summaryData,
+      startY: yPosition,
+      margin: { left: margin, right: margin },
+      theme: "grid",
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.3,
+        halign: "left",
+        valign: "middle",
+        font: "helvetica",
+        textColor: [60, 60, 60],
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 50,
+          fillColor: [220, 220, 220], // Same as Semaine header background
+          halign: "left",
+          fontStyle: "bold",
+          textColor: [0, 0, 0], // Dark text like header
+        }, // Labels column with Semaine header styling
+        1: { cellWidth: 50, halign: "left" }, // Values column
+      },
+      alternateRowStyles: {
+        fillColor: [255, 255, 255], // Keep white, no alternating
+      },
     });
 
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      `Ferme ${ferme.nom} • ${batiment.quantite} ${batiment.poussin_nom} • Responsable: ${batiment.personnel_nom}`,
-      pageWidth / 2,
-      22,
-      { align: "center" }
-    );
-
-    let yPosition = 30;
+    yPosition = (doc as any).lastAutoTable.finalY + 5; // Space after summary table
 
     // Parcourir chaque semaine
     semaines.forEach((semaine) => {
       // Vérifier si on a assez de place sur la page
-      if (yPosition + 80 > pageHeight - 20) {
+      if (yPosition + 80 > pageHeight - margin) {
         doc.addPage();
-        yPosition = 20;
+        yPosition = margin;
       }
 
       // Préparer les données pour la table principale
@@ -869,10 +907,10 @@ export default function SemainesView({
 
     // Ajouter le tableau des résultats (collé au tableau précédent)
     // Supprimer l'espace de 5 ajouté après la dernière semaine
-    yPosition = Math.max(20, yPosition - 5);
-    if (yPosition + 40 > pageHeight - 20) {
+    yPosition = Math.max(margin, yPosition - 5);
+    if (yPosition + 40 > pageHeight - margin) {
       doc.addPage();
-      yPosition = 20;
+      yPosition = margin;
     }
 
     // Préparer les données du tableau des résultats
@@ -981,69 +1019,121 @@ export default function SemainesView({
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour aux bâtiments
             </Button>
-            <div className="text-center">
-              <h1 className="text-2xl font-bold text-foreground">
-                Suivi Hebdomadaire - Bâtiment {batiment.numero_batiment}
-              </h1>
-              <p className="text-muted-foreground">
-                Ferme {ferme.nom} • {batiment.quantite} {batiment.poussin_nom} • Responsable:{" "}
-                {batiment.personnel_nom}
-              </p>
-            </div>
-            <Button variant="outline" onClick={generatePDF}>
-              <FileDown className="mr-2 h-4 w-4" />
+
+            <Button onClick={generatePDF}>
+              <Download className="mr-2 h-4 w-4" />
               Exporter PDF
             </Button>
+          </div>
+
+          {/* Tableau de synthèse */}
+          <div className="bg-white dark:bg-slate-800 border border-slate-400/50 overflow-hidden mb-6">
+            <Table>
+              <TableBody>
+                <TableRow className="border-b border-slate-400/50">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Date d'Entrée
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {new Date(bande.date_entree).toLocaleDateString("fr-FR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="border-b border-slate-400/50">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Quantité
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {batiment.quantite}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="border-b border-slate-400/50">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Personnel
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {batiment.personnel_nom}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="border-b border-slate-400/50">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Poussin
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {batiment.poussin_nom}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="border-b border-slate-400/50">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Bâtiment
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {batiment.numero_batiment}
+                  </TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Ferme
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {ferme.nom}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
 
           {/* Semaines Tables */}
           <div className="space-y-6">
             {semaines.map((semaine) => (
               <div key={semaine.id} className="flex items-end">
-                <div className="flex-1 overflow-x-auto border border-slate-200 dark:border-slate-700">
+                <div className="flex-1 overflow-x-auto border border-slate-400/50">
                   <Table className="min-w-full" data-semaine-id={semaine.id}>
                     <TableHeader className="bg-slate-100 dark:bg-slate-800">
                       {/* Semaine X header row */}
                       <TableRow>
                         <TableHead
                           colSpan={10}
-                          className="text-center font-bold text-slate-800 dark:text-slate-200 py-2 bg-slate-200 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-700"
+                          className="text-center font-bold text-slate-800 dark:text-slate-200 py-2 bg-slate-200 dark:bg-slate-700 border-b border-slate-400/50"
                         >
                           Semaine {semaine.numero_semaine}
                         </TableHead>
                       </TableRow>
                       {/* Column headers row */}
                       <TableRow>
-                        <TableHead className="w-[60px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="w-[60px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           Jour
                         </TableHead>
-                        <TableHead className="w-[80px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="w-[80px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           Date
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           Décès (Jour)
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           <div className="flex items-center justify-center">Décès (Total)</div>
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           Alimentation (Jour)
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           <div className="flex items-center justify-center">
                             Alimentation (Total)
                           </div>
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           Soins (Traitement)
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           Soins (Quantité)
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                           Analyses
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-b border-slate-400/50">
                           Remarques
                         </TableHead>
                       </TableRow>
@@ -1051,10 +1141,10 @@ export default function SemainesView({
                     <TableBody>
                       {semaine.suivi_quotidien.map((suivi) => (
                         <TableRow key={suivi.age} className="last:border-b-0">
-                          <TableCell className="font-medium text-center text-gray-800 dark:text-gray-200 border-r border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                          <TableCell className="font-medium text-center text-gray-800 dark:text-gray-200 border-r border-b border-slate-400/50 bg-white dark:bg-white">
                             {suivi.age}
                           </TableCell>
-                          <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                          <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-b border-slate-400/50 bg-white dark:bg-white">
                             {getDateForAge(suivi.age)}
                           </TableCell>
 
@@ -1115,8 +1205,8 @@ export default function SemainesView({
                             return (
                               <TableCell
                                 key={field}
-                                className={`text-center text-gray-700 dark:text-gray-300 p-0 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-white ${
-                                  !isLastCellInRow ? "border-r" : ""
+                                className={`text-center text-gray-700 dark:text-gray-300 p-0 border-b border-slate-400/50 bg-white dark:bg-white ${
+                                  !isLastCellInRow ? "border-r border-slate-400/50" : ""
                                 }`}
                                 onDoubleClick={() => {
                                   if (isEditable) {
@@ -1266,13 +1356,13 @@ export default function SemainesView({
                     return (
                       <>
                         <div
-                          className="w-32 px-4 py-2 text-center font-medium text-gray-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-100 border border-slate-200 dark:border-slate-700 flex items-center justify-center border-l-0"
+                          className="w-32 px-4 py-2 text-center font-medium text-gray-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-100 border border-slate-400/50 flex items-center justify-center border-l-0"
                           style={{ minHeight: 54, height: h6 + 1 }}
                         >
                           Poids
                         </div>
                         <div
-                          className="w-32 text-center text-gray-700 dark:text-gray-300 bg-white dark:bg-white border border-t-0 border-slate-200 dark:border-slate-700 border-l-0 border-b-2 flex items-center justify-center"
+                          className="w-32 text-center text-gray-700 dark:text-gray-300 bg-white dark:bg-white border border-t-0 border-slate-400/50 border-l-0 border-b-2 flex items-center justify-center"
                           style={{ minHeight: 54, height: h7 + 1 }}
                         >
                           {editingPoids?.semaineId === semaine.id ? (
@@ -1321,8 +1411,8 @@ export default function SemainesView({
 
           {/* Tableau des résultats */}
           <div className="mt-8">
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
-              <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-200 dark:border-slate-600">
+            <div className="bg-white dark:bg-slate-800 border border-slate-400/50 overflow-hidden">
+              <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-400/50">
                 <h2 className="font-semibold text-slate-800 dark:text-slate-200">
                   Tableau des Résultats
                 </h2>
@@ -1331,22 +1421,22 @@ export default function SemainesView({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                       Alimentation Totale
                     </TableHead>
-                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                       Poids Final
                     </TableHead>
-                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                       Facteur de Conversion
                     </TableHead>
-                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                       Décès Total
                     </TableHead>
-                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-700">
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                       Pourcentage de Mortalité
                     </TableHead>
-                    <TableHead className="text-center text-slate-700 dark:text-slate-300">
+                    <TableHead className="text-center text-slate-700 dark:text-slate-300 border-b border-slate-400/50">
                       Notes
                     </TableHead>
                   </TableRow>
@@ -1354,7 +1444,7 @@ export default function SemainesView({
                 <TableBody>
                   <TableRow>
                     {/* Alimentation Totale */}
-                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-400/50 bg-white dark:bg-white">
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const totalAlimentation = calculateTotalAlimentation();
@@ -1368,7 +1458,7 @@ export default function SemainesView({
                     </TableCell>
 
                     {/* Poids Final */}
-                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-400/50 bg-white dark:bg-white">
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const finalWeight = calculateFinalWeight();
@@ -1378,7 +1468,7 @@ export default function SemainesView({
                     </TableCell>
 
                     {/* Facteur de Conversion */}
-                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-400/50 bg-white dark:bg-white">
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const conversionFactor = calculateConversionFactor();
@@ -1414,7 +1504,7 @@ export default function SemainesView({
                     </TableCell>
 
                     {/* Décès Total */}
-                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-400/50 bg-white dark:bg-white">
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const totalDeaths = calculateTotalDeaths();
@@ -1424,7 +1514,7 @@ export default function SemainesView({
                     </TableCell>
 
                     {/* Pourcentage de Mortalité */}
-                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-white">
+                    <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-slate-400/50 bg-white dark:bg-white">
                       <div className="px-4 py-2 h-full w-full flex items-center justify-center">
                         {(() => {
                           const deathPercentage = calculateDeathPercentage();
