@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -18,7 +17,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronsUpDown, FileDown } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   BatimentWithDetails,
@@ -31,6 +30,8 @@ import {
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { cn } from "@/lib/utils";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 interface SemainesViewProps {
   batiment: BatimentWithDetails;
@@ -362,6 +363,19 @@ export default function SemainesView({
       // Utiliser la valeur passée en paramètre ou celle de l'input
       const valueToSave = overrideValue !== undefined ? overrideValue : inputValue;
 
+      // Validation pour les champs numériques qui ne peuvent pas être négatifs
+      if (
+        field === "deces_par_jour" ||
+        field === "alimentation_par_jour" ||
+        field === "soins_quantite"
+      ) {
+        const numericValue = parseFloat(valueToSave);
+        if (!isNaN(numericValue) && numericValue < 0) {
+          toast.error("Les valeurs négatives ne sont pas autorisées pour ce champ");
+          return;
+        }
+      }
+
       // Utiliser la commande upsert pour créer ou mettre à jour
       await invoke("upsert_suivi_quotidien_field", {
         semaineId: semaine.id,
@@ -422,6 +436,12 @@ export default function SemainesView({
 
     try {
       const poidsNumber = poidsValue.trim() === "" ? null : parseFloat(poidsValue);
+
+      // Validation pour le poids - ne peut pas être négatif
+      if (poidsNumber !== null && poidsNumber < 0) {
+        toast.error("Le poids ne peut pas être négatif");
+        return;
+      }
 
       await invoke("update_semaine_poids", {
         semaineId: editingPoids.semaineId,
@@ -619,6 +639,327 @@ export default function SemainesView({
     return 0;
   };
 
+  /**
+   * Génère un PDF du suivi hebdomadaire avec le layout spécial pour la colonne poids
+   */
+  const generatePDF = () => {
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    // Configuration des marges et largeurs
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 8;
+
+    // Ajouter le titre et les informations d'en-tête
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Suivi Hebdomadaire - Bâtiment ${batiment.numero_batiment}`, pageWidth / 2, 15, {
+      align: "center",
+    });
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Ferme ${ferme.nom} • ${batiment.quantite} ${batiment.poussin_nom} • Responsable: ${batiment.personnel_nom}`,
+      pageWidth / 2,
+      22,
+      { align: "center" }
+    );
+
+    let yPosition = 30;
+
+    // Parcourir chaque semaine
+    semaines.forEach((semaine) => {
+      // Vérifier si on a assez de place sur la page
+      if (yPosition + 80 > pageHeight - 20) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      // Préparer les données pour la table principale
+      const tableData = semaine.suivi_quotidien.map((suivi, rowIndex) => {
+        const row = [
+          suivi.age.toString(),
+          getDateForAge(suivi.age),
+          suivi.deces_par_jour?.toString() || "-",
+          // Pour deces_total, calculer seulement si deces_par_jour existe
+          suivi.deces_par_jour !== null &&
+          suivi.deces_par_jour !== undefined &&
+          suivi.deces_total &&
+          suivi.deces_total > 0
+            ? suivi.deces_total.toString()
+            : "-",
+          suivi.alimentation_par_jour?.toString() || "-",
+          // Pour alimentation_total, calculer seulement si alimentation_par_jour existe
+          suivi.alimentation_par_jour !== null &&
+          suivi.alimentation_par_jour !== undefined &&
+          suivi.alimentation_total &&
+          suivi.alimentation_total > 0
+            ? suivi.alimentation_total.toString()
+            : "-",
+          suivi.soins_nom || "-",
+          suivi.soins_quantite?.toString() || "-",
+          suivi.analyses || "-",
+          suivi.remarques || "-",
+        ];
+
+        // Pour les lignes 6 et 7 (index 5 et 6), ajouter la colonne poids
+        if (rowIndex === 5) {
+          row.push("Poids"); // Label pour la ligne 6
+        } else if (rowIndex === 6) {
+          row.push(
+            semaine.poids !== null && semaine.poids !== undefined ? `${semaine.poids} kg` : "-"
+          ); // Valeur pour la ligne 7
+        } else {
+          row.push(""); // Cellule vide pour les autres lignes
+        }
+
+        return row;
+      });
+
+      // Headers avec titre de semaine et colonnes
+      const headers = [
+        [
+          {
+            content: `Semaine ${semaine.numero_semaine}`,
+            colSpan: 10,
+            styles: {
+              halign: "center" as const,
+              // Fond plus sombre pour la barre « Semaine X » afin de contraster avec la ligne d'entêtes
+              fillColor: [220, 220, 220] as [number, number, number],
+              textColor: [0, 0, 0] as [number, number, number],
+              fontStyle: "bold" as const,
+            },
+          },
+          "",
+        ],
+        [
+          "Jour",
+          "Date",
+          "Décès (Jour)",
+          "Décès (Total)",
+          "Alimentation (Jour)",
+          "Alimentation (Total)",
+          "Soins (Traitement)",
+          "Soins (Quantité)",
+          "Analyses",
+          "Remarques",
+          "",
+        ],
+      ];
+
+      // Créer la table avec autoTable
+      autoTable(doc, {
+        head: headers,
+        body: tableData,
+        startY: yPosition,
+        margin: { left: margin, right: margin },
+        theme: "grid",
+        styles: {
+          fontSize: 7,
+          cellPadding: 1.5,
+          lineColor: [180, 180, 180],
+          lineWidth: 0.3,
+          halign: "center",
+          valign: "middle",
+          font: "helvetica",
+          textColor: [60, 60, 60],
+          overflow: "linebreak",
+        },
+        headStyles: {
+          fillColor: [235, 235, 235],
+          textColor: [60, 60, 60],
+          fontStyle: "normal",
+          fontSize: 7,
+          cellPadding: 1.5,
+          halign: "center",
+          lineWidth: 0.3,
+          lineColor: [180, 180, 180],
+        },
+        bodyStyles: {
+          fillColor: [255, 255, 255], // bg-white
+          textColor: [0, 0, 0], // black text as requested
+          fontSize: 7,
+          cellPadding: 1.5,
+        },
+        alternateRowStyles: {
+          fillColor: [255, 255, 255], // Keep white, no alternating
+        },
+        columnStyles: {
+          0: { cellWidth: 8 }, // Jour
+          1: { cellWidth: 12 }, // Date
+          2: { cellWidth: 15 }, // Décès (Jour)
+          3: { cellWidth: 15 }, // Décès (Total)
+          4: { cellWidth: 18 }, // Alimentation (Jour)
+          5: { cellWidth: 20 }, // Alimentation (Total)
+          6: { cellWidth: 22 }, // Soins (Traitement)
+          7: { cellWidth: 16 }, // Soins (Quantité)
+          8: { cellWidth: 15 }, // Analyses
+          9: { cellWidth: 25 }, // Remarques
+          10: { cellWidth: 15 }, // Poids
+        },
+        tableWidth: "wrap",
+        didParseCell: (data) => {
+          const col = data.column.index;
+          const section = (data as any).section as "head" | "body" | "foot";
+          const rowIndex = data.row.index;
+          const lastCol = data.table.columns.length - 1;
+
+          // PDF: make the two top cells of the last column (in the header rows)
+          // white and remove top/right/bottom borders; keep a thin left separator
+          if (section === "head" && col === lastCol && (rowIndex === 0 || rowIndex === 1)) {
+            data.cell.styles.fillColor = [255, 255, 255];
+            (data.cell.styles as any).lineWidth = { top: 0, right: 0, bottom: 0, left: 0.3 } as any;
+          }
+
+          if (col === 10) {
+            if (section === "body") {
+              // Start by hiding top/right/bottom for all Poids BODY cells, keep left separator
+              const base = { top: 0, right: 0, bottom: 0, left: 0.3 } as any;
+              data.cell.styles.lineWidth = base;
+
+              if (rowIndex === 5) {
+                // Visible box for the "Poids" label row
+                data.cell.styles.lineWidth = {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any;
+              } else if (rowIndex === 6) {
+                // Value row: include top border to visually match adjacent cells
+                data.cell.styles.lineWidth = {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any;
+              }
+            }
+          }
+        },
+        willDrawCell: (data) => {
+          const columnIndex = data.column.index;
+          const rowIndex = data.row.index;
+          const section = (data as any).section as "head" | "body" | "foot";
+          if (section === "body" && columnIndex === 10 && rowIndex === 5) {
+            const cell = data.cell;
+            // Fond gris de la cellule "Poids" (ligne 6) sans toucher aux bordures
+            const inset = 0.4;
+            doc.setFillColor(235, 235, 235);
+            doc.rect(
+              cell.x + inset,
+              cell.y + inset,
+              cell.width - 2 * inset,
+              cell.height - 2 * inset,
+              "F"
+            );
+          }
+        },
+      });
+
+      // Ne pas redessiner les traits verticaux; les styles ci-dessus contrôlent les côtés visibles
+
+      yPosition = (doc as any).lastAutoTable.finalY + 5; // Small space between tables
+    });
+
+    // Ajouter le tableau des résultats (collé au tableau précédent)
+    // Supprimer l'espace de 5 ajouté après la dernière semaine
+    yPosition = Math.max(20, yPosition - 5);
+    if (yPosition + 40 > pageHeight - 20) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    // Préparer les données du tableau des résultats
+    const totalAlimentation = calculateTotalAlimentation();
+    const finalWeight = calculateFinalWeight();
+    const conversionFactor = calculateConversionFactor();
+    const totalDeaths = calculateTotalDeaths();
+    const deathPercentage = calculateDeathPercentage();
+
+    const resultsData = [
+      [
+        totalAlimentation > 0
+          ? `${totalAlimentation.toFixed(2)} kg (${totalAlimentation / 50} sacs)`
+          : "-",
+        finalWeight !== null ? `${finalWeight} kg` : "-",
+        conversionFactor !== null ? conversionFactor.toFixed(3) : "-",
+        totalDeaths > 0 ? totalDeaths.toString() : "-",
+        deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-",
+        bande.notes || "-",
+      ],
+    ];
+
+    const resultsHead = [
+      [
+        {
+          content: "Tableau des Résultats",
+          colSpan: 6,
+          styles: {
+            halign: "center" as const,
+            fillColor: [220, 220, 220] as [number, number, number],
+            textColor: [50, 50, 50] as [number, number, number],
+            fontStyle: "bold" as const,
+          },
+        },
+      ],
+      [
+        "Alimentation Totale",
+        "Poids Final",
+        "Facteur de Conversion",
+        "Décès Total",
+        "Pourcentage de Mortalité",
+        "Notes",
+      ],
+    ];
+
+    autoTable(doc, {
+      head: resultsHead,
+      body: resultsData,
+      startY: yPosition + 6, // petit espace au-dessus du tableau des résultats
+      margin: { left: margin, right: margin },
+      theme: "grid",
+      styles: {
+        fontSize: 7,
+        cellPadding: 1.5,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.3,
+        halign: "center",
+        valign: "middle",
+        font: "helvetica",
+        textColor: [0, 0, 0],
+      },
+      headStyles: {
+        fillColor: [235, 235, 235],
+        textColor: [0, 0, 0],
+        fontStyle: "normal",
+        fontSize: 7,
+        cellPadding: 1.5,
+        halign: "center",
+        lineWidth: 0.3,
+        lineColor: [180, 180, 180],
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255], // bg-white
+        textColor: [60, 60, 60],
+        fontSize: 7,
+        cellPadding: 1.5,
+      },
+    });
+
+    // Sauvegarder le PDF
+    const fileName = `suivi_hebdomadaire_batiment_${batiment.numero_batiment}_${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+    doc.save(fileName);
+    toast.success("PDF généré avec succès");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -649,7 +990,10 @@ export default function SemainesView({
                 {batiment.personnel_nom}
               </p>
             </div>
-            <div className="w-[120px]"></div> {/* Spacer for symmetry */}
+            <Button variant="outline" onClick={generatePDF}>
+              <FileDown className="mr-2 h-4 w-4" />
+              Exporter PDF
+            </Button>
           </div>
 
           {/* Semaines Tables */}
@@ -961,7 +1305,9 @@ export default function SemainesView({
                                   : "Veuillez d'abord renseigner le poids de la semaine précédente"
                               }
                             >
-                              {semaine.poids !== null ? `${semaine.poids}` : "-"}
+                              {semaine.poids !== null && semaine.poids !== undefined
+                                ? `${semaine.poids} kg`
+                                : "-"}
                             </div>
                           )}
                         </div>
