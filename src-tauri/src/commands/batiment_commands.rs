@@ -6,7 +6,7 @@
 use tauri::State;
 use std::sync::Arc;
 use crate::database::DatabaseManager;
-use crate::models::{Batiment, CreateBatiment, UpdateBatiment, BatimentWithDetails};
+use crate::models::{Batiment, CreateBatiment, UpdateBatiment, BatimentWithDetails, Maladie};
 use crate::repositories::BatimentRepository;
 use crate::services::semaine_service::SemaineService;
 
@@ -95,4 +95,38 @@ pub async fn get_available_batiment_numbers(
     
     BatimentRepository::get_available_batiment_numbers(&conn, ferme_id)
         .map_err(|e| e.to_string())
+}
+
+/// Ajoute une maladie à un bâtiment spécifique
+#[tauri::command]
+pub async fn add_maladie_to_batiment(
+    db: State<'_, Arc<DatabaseManager>>,
+    batiment_id: i64,
+    maladie_id: i64,
+) -> Result<(), String> {
+    let conn = db.get_connection().map_err(|e| e.to_string())?;
+    BatimentRepository::add_maladie_to_batiment(&conn, batiment_id, maladie_id)
+        .map_err(|e| e.to_string())
+}
+
+/// Ajoute une maladie à tous les bâtiments d'une même bande
+#[tauri::command]
+pub async fn add_maladie_to_bande_batiments(
+    db: State<'_, Arc<DatabaseManager>>,
+    bande_id: i64,
+    maladie_id: i64,
+) -> Result<usize, String> {
+    let conn = db.get_connection().map_err(|e| e.to_string())?;
+    BatimentRepository::add_maladie_to_bande_batiments(&conn, bande_id, maladie_id)
+        .map_err(|e| e.to_string())
+}
+
+/// Récupère les maladies liées à un bâtiment
+#[tauri::command]
+pub async fn get_maladies_by_batiment(
+    db: State<'_, Arc<DatabaseManager>>,
+    batiment_id: i64,
+) -> Result<Vec<Maladie>, String> {
+    let conn = db.get_connection().map_err(|e| e.to_string())?;
+    BatimentRepository::get_maladies_by_batiment(&conn, batiment_id).map_err(|e| e.to_string())
 }

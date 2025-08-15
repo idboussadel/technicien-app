@@ -1,5 +1,6 @@
 use crate::error::AppError;
-use crate::models::{Batiment, BatimentWithDetails, CreateBatiment, UpdateBatiment};
+use crate::models::{Batiment, BatimentWithDetails, CreateBatiment, UpdateBatiment, Maladie};
+use chrono::{DateTime, Utc};
 use r2d2::PooledConnection;
 use r2d2_sqlite::SqliteConnectionManager;
 
@@ -265,5 +266,105 @@ impl BatimentRepository {
         let all_numbers: Vec<String> = (1..=20).map(|i| i.to_string()).collect();
 
         Ok(all_numbers)
+    }
+
+    /// Link a maladie to a batiment (idempotent)
+    pub fn add_maladie_to_batiment(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        batiment_id: i64,
+        maladie_id: i64,
+    ) -> Result<(), AppError> {
+        // Validate foreign keys
+        let bat_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM batiments WHERE id = ?1",
+            [batiment_id],
+            |row| row.get(0),
+        )?;
+        if bat_exists == 0 {
+            return Err(AppError::not_found("Batiment", batiment_id));
+        }
+
+        let mal_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM maladies WHERE id = ?1",
+            [maladie_id],
+            |row| row.get(0),
+        )?;
+        if mal_exists == 0 {
+            return Err(AppError::not_found("Maladie", maladie_id));
+        }
+
+        // Insert if not exists
+        conn.execute(
+            "INSERT OR IGNORE INTO batiment_maladies (batiment_id, maladie_id) VALUES (?1, ?2)",
+            rusqlite::params![batiment_id, maladie_id],
+        )?;
+
+        Ok(())
+    }
+
+    /// Add a maladie to all batiments in a specific bande
+    pub fn add_maladie_to_bande_batiments(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        bande_id: i64,
+        maladie_id: i64,
+    ) -> Result<usize, AppError> {
+        // Validate maladie
+        let mal_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM maladies WHERE id = ?1",
+            [maladie_id],
+            |row| row.get(0),
+        )?;
+        if mal_exists == 0 {
+            return Err(AppError::not_found("Maladie", maladie_id));
+        }
+
+        // Insert for each batiment in bande (ignore duplicates)
+        let affected = conn.execute(
+            "INSERT OR IGNORE INTO batiment_maladies (batiment_id, maladie_id)
+             SELECT id, ?1 FROM batiments WHERE bande_id = ?2",
+            rusqlite::params![maladie_id, bande_id],
+        )?;
+
+        Ok(affected as usize)
+    }
+
+    /// Get maladies linked to a specific batiment
+    pub fn get_maladies_by_batiment(
+        conn: &PooledConnection<SqliteConnectionManager>,
+        batiment_id: i64,
+    ) -> Result<Vec<Maladie>, AppError> {
+        // Validate batiment
+        let bat_exists: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM batiments WHERE id = ?1",
+            [batiment_id],
+            |row| row.get(0),
+        )?;
+        if bat_exists == 0 {
+            return Err(AppError::not_found("Batiment", batiment_id));
+        }
+
+        let mut stmt = conn.prepare(
+            "SELECT m.id, m.nom, m.created_at
+             FROM batiment_maladies bm
+             JOIN maladies m ON m.id = bm.maladie_id
+             WHERE bm.batiment_id = ?1
+             ORDER BY m.nom",
+        )?;
+
+        let list = stmt
+            .query_map([batiment_id], |row| {
+                let created_at_str: String = row.get(2)?;
+                let created_at: DateTime<Utc> = DateTime::parse_from_rfc3339(&created_at_str)
+                    .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(e)))?
+                    .with_timezone(&Utc);
+                Ok(Maladie {
+                    id: row.get(0)?,
+                    nom: row.get(1)?,
+                    created_at,
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(list)
     }
 }

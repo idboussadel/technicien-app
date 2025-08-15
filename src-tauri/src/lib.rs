@@ -87,6 +87,9 @@ pub fn run() {
             commands::update_batiment,
             commands::delete_batiment,
             commands::get_available_batiment_numbers,
+            commands::add_maladie_to_batiment,
+            commands::add_maladie_to_bande_batiments,
+            commands::get_maladies_by_batiment,
             // Alimentation commands
             commands::create_alimentation_history,
             commands::get_alimentation_history_by_bande,

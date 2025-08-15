@@ -190,6 +190,19 @@ impl DatabaseManager {
             [],
         )?;
 
+        // Table de liaison batiment <-> maladies (plusieurs maladies par bâtiment)
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS batiment_maladies (
+                batiment_id INTEGER NOT NULL,
+                maladie_id INTEGER NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (batiment_id, maladie_id),
+                FOREIGN KEY (batiment_id) REFERENCES batiments(id) ON DELETE CASCADE,
+                FOREIGN KEY (maladie_id) REFERENCES maladies(id) ON DELETE RESTRICT
+            )",
+            [],
+        )?;
+
         // Création de la table poussins
         conn.execute(
             "CREATE TABLE IF NOT EXISTS poussins (
@@ -292,6 +305,16 @@ impl DatabaseManager {
         // Index composite pour les recherches par bande et date de création
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_alimentation_history_bande_created ON alimentation_history(bande_id, created_at)",
+            [],
+        )?;
+
+        // Indexes pour la table de liaison batiment_maladies
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_batiment_maladies_batiment_id ON batiment_maladies(batiment_id)",
+            [],
+        )?;
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_batiment_maladies_maladie_id ON batiment_maladies(maladie_id)",
             [],
         )?;
 

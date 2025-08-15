@@ -20,6 +20,7 @@ import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
 import { AlimentationHistoryList } from "@/pages/fermes/bandes/alimentation/alimentation-history-list";
 import { useState } from "react";
 import SemainesView from "./semaines/semaines";
+// (UI d'ajout de maladie déplacée vers la page Semaines)
 
 interface BatimentsViewProps {
   bande: BandeWithDetails;
@@ -57,6 +58,8 @@ export default function BatimentsView({
     // TODO: Implement edit batiment functionality
     console.log("Edit batiment:", batimentId);
   };
+
+  // (handlers ajout maladie supprimés ici)
 
   const handleDeleteBatiment = (batimentId: number | null) => {
     // TODO: Implement delete batiment functionality
@@ -136,31 +139,27 @@ export default function BatimentsView({
                               Bâtiment {batiment.numero_batiment}
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                             </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Cliquez pour voir le suivi hebdomadaire
-                            </p>
-                          </div>
-                        </div>
+                            <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4" />
+                                <span>
+                                  {batiment.quantite} {batiment.poussin_nom}
+                                </span>
+                              </div>
 
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4" />
-                            <span>
-                              {batiment.quantite} {batiment.poussin_nom}
-                            </span>
-                          </div>
-
-                          <div>
-                            <span className="text-muted-foreground">Responsable: </span>
-                            <span className="font-medium text-foreground">
-                              {batiment.personnel_nom}
-                            </span>
+                              <div>
+                                <span className="text-muted-foreground">Responsable: </span>
+                                <span className="font-medium text-foreground">
+                                  {batiment.personnel_nom}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
 
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -178,6 +177,7 @@ export default function BatimentsView({
                             <Edit className="w-4 h-4 mr-2" />
                             Modifier
                           </DropdownMenuItem>
+
                           <DropdownMenuItem
                             onClick={() => handleDeleteBatiment(batiment.id)}
                             className="cursor-pointer text-destructive focus:text-destructive"

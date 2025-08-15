@@ -397,73 +397,124 @@ export default function Fermes({
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3 sm:gap-6">
                 {/* Farm Cards */}
                 {filteredFermes.map((ferme) => (
                   <div key={ferme.id} className="group cursor-pointer">
                     <div
-                      className="border border-border rounded-xl p-6 transition-all duration-200 aspect-[4/3] bg-[#1d2737] hover:bg-[#1d2737]/90 flex flex-col justify-between relative text-white"
+                      className="relative transition-all duration-200 hover:scale-105"
+                      style={{
+                        filter:
+                          "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.08))",
+                        transition: "all 0.2s ease-in-out",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.filter =
+                          "drop-shadow(0 8px 15px rgba(0, 0, 0, 0.15)) drop-shadow(0 3px 6px rgba(0, 0, 0, 0.1))";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.filter =
+                          "drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1)) drop-shadow(0 1px 3px rgba(0, 0, 0, 0.08))";
+                      }}
                       onClick={() => onFermeSelect(ferme)}
                     >
-                      <DropdownMenu>
-                        <DropdownMenuTrigger>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="absolute rounded-md hover:bg-[#1d2737]/90 hover:border-1 focus:bg-accent top-4 right-4 text-muted-foreground h-8 w-8 p-0 z-10"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                          >
-                            <MoreHorizontal className="w-4 h-4 text-white" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleModifier(ferme);
-                            }}
-                            className="cursor-pointer"
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Modifier
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSupprimer(ferme);
-                            }}
-                            className="cursor-pointer text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <div className="flex-1 flex flex-col items-center justify-center">
-                        <h3 className="text-2xl capitalize font-bold text-center mb-2">
-                          {ferme.nom}
-                        </h3>
-                        <p className="text-sm text-white/70">
-                          {ferme.nbr_meuble} bâtiment{ferme.nbr_meuble !== 1 ? "s" : ""}
-                        </p>
+                      {/* Folder Shape */}
+                      <div className="relative w-full h-56 text-white">
+                        <svg
+                          className="w-full h-full"
+                          viewBox="0 0 300 192"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M12 0 C5.373 0 0 5.373 0 12 L0 180 C0 186.627 5.373 192 12 192 L288 192 C294.627 192 300 186.627 300 180 L300 34 C300 27.373 294.627 22 288 22 L85 22 Q80 10 75 0 Z"
+                            fill="#374151"
+                            className="transition-colors group-hover:fill-gray-600"
+                          />
+                        </svg>
+
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          {/* Dropdown Menu */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="absolute top-2 right-2 text-white/70 hover:text-white hover:bg-white/10 h-6 w-6 p-0 z-10"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40">
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleModifier(ferme);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Modifier
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSupprimer(ferme);
+                                }}
+                                className="cursor-pointer text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Supprimer
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+
+                          {/* Content - Perfectly Centered */}
+                          <div className="text-center">
+                            <h3 className="text-lg font-bold capitalize mb-1">{ferme.nom}</h3>
+                            <p className="text-sm text-white/80">
+                              {ferme.nbr_meuble} bâtiment{ferme.nbr_meuble !== 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
 
-                {/* Add New Farm Card */}
+                {/* Add New Farm Folder */}
                 <div className="group cursor-pointer">
                   <div
-                    className="border-2 border-dashed border-border rounded-xl p-6 hover:border-muted-foreground hover:bg-muted/50 transition-all duration-200 aspect-[4/3] flex flex-col items-center justify-center"
+                    className="relative transition-all duration-200 hover:scale-105"
                     onClick={() => setIsCreateDialogOpen(true)}
                   >
-                    <Plus className="w-8 h-8 text-muted-foreground mb-3 group-hover:text-foreground transition-colors" />
-                    <span className="text-muted-foreground font-medium group-hover:text-foreground transition-colors">
-                      Nouvelle ferme
-                    </span>
+                    {/* Folder Shape for Add New */}
+                    <div className="relative w-full h-56 text-gray-500">
+                      <svg
+                        className="w-full h-full"
+                        viewBox="0 0 300 192"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M12 0 C5.373 0 0 5.373 0 12 L0 180 C0 186.627 5.373 192 12 192 L288 192 C294.627 192 300 186.627 300 180 L300 34 C300 27.373 294.627 22 288 22 L85 22 Q80 10 75 0 Z"
+                          fill="none"
+                          stroke="#d1d5db"
+                          strokeWidth="2"
+                          strokeDasharray="8,4"
+                          className="transition-colors group-hover:stroke-gray-400"
+                        />
+                      </svg>
+
+                      <div className="absolute inset-0 flex items-center justify-center group-hover:text-gray-700 transition-colors">
+                        <div className="text-center">
+                          <Plus className="w-8 h-8 mb-2 mx-auto" />
+                          <span className="text-sm font-medium">Nouvelle ferme</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

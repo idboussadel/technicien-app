@@ -1,6 +1,7 @@
 use crate::database::DatabaseManager;
 use crate::error::AppResult;
-use crate::models::{Semaine, CreateSemaine, SuiviQuotidienWithDetails};
+use crate::models::{Semaine, CreateSemaine, SuiviQuotidienWithDetails, Maladie};
+use crate::repositories::batiment_repository::BatimentRepository;
 use crate::repositories::semaine_repository::{SemaineRepository, SemaineRepositoryTrait};
 use crate::repositories::suivi_quotidien_repository::{SuiviQuotidienRepository, SuiviQuotidienRepositoryTrait};
 use serde::{Deserialize, Serialize};
@@ -118,6 +119,17 @@ impl SemaineService {
         }
         
         Ok(result)
+    }
+
+    /// Retourne les semaines complètes et les maladies liées au bâtiment
+    pub async fn get_full_semaines_with_maladies_by_batiment(
+        &self,
+        batiment_id: i64,
+    ) -> AppResult<(Vec<SemaineWithDetails>, Vec<Maladie>)> {
+        let semaines = self.get_full_semaines_by_batiment(batiment_id).await?;
+        let conn = self.db.get_connection()?;
+        let maladies = BatimentRepository::get_maladies_by_batiment(&conn, batiment_id)?;
+        Ok((semaines, maladies))
     }
 
     /// Met à jour le poids d'une semaine

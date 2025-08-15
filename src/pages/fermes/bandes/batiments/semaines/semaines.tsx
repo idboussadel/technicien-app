@@ -17,7 +17,17 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, Check, ChevronsUpDown, Download } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Check, ChevronsUpDown, Download, Plus, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import toast from "react-hot-toast";
 import {
   BatimentWithDetails,
@@ -26,6 +36,7 @@ import {
   SemaineWithDetails,
   SuiviQuotidienWithTotals,
   Soin,
+  Maladie,
 } from "@/types";
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -73,6 +84,12 @@ export default function SemainesView({
   const [rowHeights, setRowHeights] = useState<Record<string, { row6: number; row7: number }>>({});
   const [editingNotes, setEditingNotes] = useState<boolean>(false);
   const [notesValue, setNotesValue] = useState<string>("");
+  const [batimentMaladies, setBatimentMaladies] = useState<Maladie[]>([]);
+  const [isMaladieModalOpen, setIsMaladieModalOpen] = useState<boolean>(false);
+  const [maladies, setMaladies] = useState<Maladie[]>([]);
+  const [selectedMaladieIds, setSelectedMaladieIds] = useState<string[]>([]);
+  const [applyToSameBande, setApplyToSameBande] = useState<boolean>(false);
+  const [maladieComboboxOpen, setMaladieComboboxOpen] = useState<boolean>(false);
 
   /**
    * Initialise les données du composant en récupérant les semaines et les soins
@@ -87,6 +104,7 @@ export default function SemainesView({
         setSoins(Array.isArray(soinsData) ? soinsData : []);
 
         if (batiment.id) {
+          // Charger semaines et maladies en une seule fois
           await loadSemaines(batiment.id);
         }
       } catch (error) {
@@ -162,17 +180,24 @@ export default function SemainesView({
    */
   const loadSemaines = async (batimentId: number) => {
     try {
-      // Utiliser la nouvelle commande qui gère automatiquement la création des 8 semaines et leurs suivis
-      const fullSemaines = await invoke<SemaineWithDetails[]>("get_full_semaines_by_batiment", {
-        batimentId,
-      });
+      // Utiliser la commande qui retourne semaines + maladies
+      const result = await invoke<{ semaines: SemaineWithDetails[]; maladies: Maladie[] }>(
+        "get_full_semaines_by_batiment",
+        {
+          batimentId,
+        }
+      );
 
       // Ajouter les totaux calculés à chaque suivi quotidien
-      const semainesWithTotals = fullSemaines.map((semaine) => ({
+      const semainesWithTotals = (result?.semaines ?? []).map((semaine) => ({
         ...semaine,
         suivi_quotidien: semaine.suivi_quotidien.map((suivi) => {
           // Calculer les totaux pour ce suivi spécifique
-          const totals = calculateTotalsForSuivi(fullSemaines, semaine.numero_semaine, suivi.age);
+          const totals = calculateTotalsForSuivi(
+            result?.semaines ?? [],
+            semaine.numero_semaine,
+            suivi.age
+          );
           return {
             ...suivi,
             deces_total: totals.deces_total,
@@ -182,6 +207,7 @@ export default function SemainesView({
       }));
 
       setSemaines(semainesWithTotals);
+      setBatimentMaladies(Array.isArray(result?.maladies) ? result.maladies : []);
     } catch (error) {
       console.error("Erreur lors du chargement des semaines:", error);
     }
@@ -528,6 +554,65 @@ export default function SemainesView({
     }
   };
 
+  // Maladies modal helpers
+  const openMaladieModal = async () => {
+    try {
+      const list = await invoke<Maladie[]>("get_maladies_list");
+      setMaladies(Array.isArray(list) ? list : []);
+      setIsMaladieModalOpen(true);
+    } catch (e) {
+      console.error(e);
+      toast.error("Impossible de charger les maladies");
+    }
+  };
+
+  const toggleSelectedMaladie = (id: number) => {
+    const idStr = id.toString();
+    setSelectedMaladieIds((prev) =>
+      prev.includes(idStr) ? prev.filter((x) => x !== idStr) : [...prev, idStr]
+    );
+  };
+
+  const submitMaladies = async () => {
+    if (selectedMaladieIds.length === 0) {
+      toast.error("Veuillez sélectionner au moins une maladie");
+      return;
+    }
+    try {
+      if (applyToSameBande) {
+        for (const idStr of selectedMaladieIds) {
+          await invoke("add_maladie_to_bande_batiments", {
+            bandeId: bande.id,
+            maladieId: parseInt(idStr, 10),
+          });
+        }
+      } else {
+        for (const idStr of selectedMaladieIds) {
+          await invoke("add_maladie_to_batiment", {
+            batimentId: batiment.id,
+            maladieId: parseInt(idStr, 10),
+          });
+        }
+      }
+      toast.success("Maladie(s) ajoutée(s) avec succès");
+      setIsMaladieModalOpen(false);
+      setSelectedMaladieIds([]);
+      setApplyToSameBande(false);
+      // Refresh maladies row
+      try {
+        const assigned = await invoke<Maladie[]>("get_maladies_by_batiment", {
+          batimentId: batiment.id,
+        });
+        setBatimentMaladies(Array.isArray(assigned) ? assigned : []);
+      } catch (e) {
+        console.error(e);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Erreur lors de l'ajout des maladies");
+    }
+  };
+
   /**
    * Calcule les valeurs totales pour un suivi donné
    */
@@ -655,8 +740,10 @@ export default function SemainesView({
 
     let yPosition = margin;
 
-    // Ajouter le tableau de synthèse (sans en-tête)
+    // Ajouter le tableau de synthèse (sans en-tête) dans l'ordre demandé
     const summaryData = [
+      ["Ferme", ferme.nom || "-"],
+      ["Bâtiment", batiment.numero_batiment?.toString() || "-"],
       [
         "Date d'Entrée",
         new Date(bande.date_entree).toLocaleDateString("fr-FR", {
@@ -665,11 +752,9 @@ export default function SemainesView({
           year: "numeric",
         }),
       ],
-      ["Quantité", batiment.quantite?.toString() || "-"],
       ["Personnel", batiment.personnel_nom || "-"],
       ["Poussin", batiment.poussin_nom || "-"],
-      ["Bâtiment", batiment.numero_batiment?.toString() || "-"],
-      ["Ferme", ferme.nom || "-"],
+      ["Quantité", batiment.quantite?.toString() || "-"],
     ];
 
     autoTable(doc, {
@@ -745,13 +830,13 @@ export default function SemainesView({
           suivi.remarques || "-",
         ];
 
-        // Pour les lignes 6 et 7 (index 5 et 6), ajouter la colonne poids
+        // Ajouter la colonne poids pour les lignes 6 et 7
         if (rowIndex === 5) {
-          row.push("Poids"); // Label pour la ligne 6
+          row.push(""); // Empty cell instead of "Poids" text
         } else if (rowIndex === 6) {
           row.push(
             semaine.poids !== null && semaine.poids !== undefined ? `${semaine.poids} kg` : "-"
-          ); // Valeur pour la ligne 7
+          ); // Value for the weight
         } else {
           row.push(""); // Cellule vide pour les autres lignes
         }
@@ -998,6 +1083,379 @@ export default function SemainesView({
     toast.success("PDF généré avec succès");
   };
 
+  /**
+   * Génère un PDF compact du suivi hebdomadaire avec 2 semaines côte à côte
+   */
+  const generateCompactPDF = () => {
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    // Configuration des marges et largeurs
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 6; // Réduire les marges
+    const tableWidth = (pageWidth - 2 * margin - 2) / 2; // 2 tables side by side with small gap
+
+    let yPosition = margin;
+
+    // Ajouter le tableau de synthèse (sans en-tête) dans l'ordre demandé
+    const summaryData = [
+      ["Ferme", ferme.nom || "-"],
+      ["Bâtiment", batiment.numero_batiment?.toString() || "-"],
+      [
+        "Date d'Entrée",
+        new Date(bande.date_entree).toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+      ],
+      ["Personnel", batiment.personnel_nom || "-"],
+      ["Poussin", batiment.poussin_nom || "-"],
+      ["Quantité", batiment.quantite?.toString() || "-"],
+    ];
+
+    autoTable(doc, {
+      body: summaryData,
+      startY: yPosition,
+      margin: { left: margin, right: margin },
+      theme: "grid",
+      styles: {
+        fontSize: 7,
+        cellPadding: 1.5,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.3,
+        halign: "left",
+        valign: "middle",
+        font: "helvetica",
+        textColor: [60, 60, 60],
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontSize: 7,
+        cellPadding: 1.5,
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 45,
+          fillColor: [220, 220, 220],
+          halign: "left",
+          fontStyle: "bold",
+          textColor: [0, 0, 0],
+        },
+        1: { cellWidth: 45, halign: "left" },
+      },
+      alternateRowStyles: {
+        fillColor: [255, 255, 255],
+      },
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 4;
+
+    // Grouper les semaines par paires pour l'affichage côte à côte
+    const semainesPairs = [];
+    for (let i = 0; i < semaines.length; i += 2) {
+      semainesPairs.push(semaines.slice(i, i + 2));
+    }
+
+    // Parcourir chaque paire de semaines
+    semainesPairs.forEach((semainesPair, pairIndex) => {
+      // Vérifier si on a assez de place sur la page
+      if (yPosition + 70 > pageHeight - margin) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      // Position X pour chaque table (gauche et droite)
+      const leftTableX = margin;
+      const rightTableX = margin + tableWidth + 2;
+
+      semainesPair.forEach((semaine, tableIndex) => {
+        const tableX = tableIndex === 0 ? leftTableX : rightTableX;
+
+        // Préparer les données pour la table
+        const tableData = semaine.suivi_quotidien.map((suivi, rowIndex) => {
+          const row = [
+            suivi.age.toString(),
+            getDateForAge(suivi.age),
+            suivi.deces_par_jour?.toString() || "-",
+            suivi.deces_par_jour !== null &&
+            suivi.deces_par_jour !== undefined &&
+            suivi.deces_total &&
+            suivi.deces_total > 0
+              ? suivi.deces_total.toString()
+              : "-",
+            suivi.alimentation_par_jour?.toString() || "-",
+            suivi.alimentation_par_jour !== null &&
+            suivi.alimentation_par_jour !== undefined &&
+            suivi.alimentation_total &&
+            suivi.alimentation_total > 0
+              ? suivi.alimentation_total.toString()
+              : "-",
+            suivi.soins_nom || "-",
+            suivi.soins_quantite?.toString() || "-",
+            suivi.analyses || "-",
+            suivi.remarques || "-",
+          ];
+
+          // Pour les lignes 6 et 7 (index 5 et 6), ajouter la colonne poids
+          if (rowIndex === 5) {
+            row.push("Poids"); // Label pour la ligne 6 (keep this one!)
+          } else if (rowIndex === 6) {
+            row.push(
+              semaine.poids !== null && semaine.poids !== undefined ? `${semaine.poids} kg` : "-"
+            ); // Valeur pour la ligne 7
+          } else {
+            row.push(""); // Cellule vide pour les autres lignes
+          }
+
+          return row;
+        });
+
+        // Headers avec titre de semaine et colonnes compactes
+        const headers = [
+          [
+            {
+              content: `Semaine ${semaine.numero_semaine}`,
+              colSpan: 10, // Only span from Jour to Remarques, not including Poids
+              styles: {
+                halign: "center" as const,
+                fillColor: [220, 220, 220] as [number, number, number],
+                textColor: [0, 0, 0] as [number, number, number],
+                fontStyle: "bold" as const,
+              },
+            },
+            "", // Empty cell for Poids column
+          ],
+          [
+            "Jour",
+            "Date",
+            "Décès (Jour)",
+            "Décès (Total)",
+            "Alim (Jour)",
+            "Alim (Total)",
+            "Soins (Traitement)",
+            "Quantité",
+            "Analyses",
+            "Remarques",
+            "", // Remove "Poids" from column header
+          ],
+        ];
+
+        // Créer la table compacte
+        autoTable(doc, {
+          head: headers,
+          body: tableData,
+          startY: yPosition,
+          margin: { left: tableX, right: pageWidth - tableX - tableWidth },
+          tableWidth: tableWidth,
+          theme: "grid",
+          styles: {
+            fontSize: 6,
+            cellPadding: 1,
+            lineColor: [180, 180, 180],
+            lineWidth: 0.3,
+            halign: "center",
+            valign: "middle",
+            font: "helvetica",
+            textColor: [60, 60, 60],
+            overflow: "linebreak",
+          },
+          headStyles: {
+            fillColor: [235, 235, 235],
+            textColor: [60, 60, 60],
+            fontStyle: "normal",
+            fontSize: 5, // Smaller font to prevent wrapping
+            cellPadding: 0.5, // Smaller padding to fit text
+            halign: "center",
+            lineWidth: 0.3,
+            lineColor: [180, 180, 180],
+          },
+          bodyStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontSize: 6,
+            cellPadding: 1,
+          },
+          alternateRowStyles: {
+            fillColor: [255, 255, 255],
+          },
+          columnStyles: {
+            0: { cellWidth: 5 }, // Jour
+            1: { cellWidth: 8 }, // Date
+            2: { cellWidth: 8 }, // Décès (Jour) - 2 digits max
+            3: { cellWidth: 8 }, // Décès (Total) - 2 digits max
+            4: { cellWidth: 8 }, // Alim (Jour) - 2 digits max
+            5: { cellWidth: 8 }, // Alim (Total) - 2 digits max
+            6: { cellWidth: 12 }, // Soins (Traitement)
+            7: { cellWidth: 8 }, // Quantité - prevent wrapping
+            8: { cellWidth: 8 }, // Analyses - prevent wrapping
+            9: { cellWidth: 12 }, // Remarques
+            10: { cellWidth: 13 }, // Poids - wider for better readability
+          },
+          didParseCell: (data) => {
+            const col = data.column.index;
+            const section = (data as any).section as "head" | "body" | "foot";
+            const rowIndex = data.row.index;
+            const lastCol = data.table.columns.length - 1;
+
+            // PDF: make the two top cells of the last column (in the header rows)
+            // white and remove top/right/bottom borders; keep a thin left separator
+            if (section === "head" && col === lastCol && (rowIndex === 0 || rowIndex === 1)) {
+              data.cell.styles.fillColor = [255, 255, 255];
+              (data.cell.styles as any).lineWidth = {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0.3,
+              } as any;
+            }
+
+            if (col === 10) {
+              if (section === "body") {
+                // Start by hiding top/right/bottom for all Poids BODY cells, keep left separator
+                const baseLineWidth = { top: 0, right: 0, bottom: 0, left: 0.3 } as any;
+                data.cell.styles.lineWidth = baseLineWidth;
+
+                if (rowIndex === 5) {
+                  // Visible box for the "Poids" label row
+                  data.cell.styles.lineWidth = {
+                    top: 0.3,
+                    right: 0.3,
+                    bottom: 0.3,
+                    left: 0.3,
+                  } as any;
+                } else if (rowIndex === 6) {
+                  // Value row: include top border to visually match adjacent cells
+                  data.cell.styles.lineWidth = {
+                    top: 0.3,
+                    right: 0.3,
+                    bottom: 0.3,
+                    left: 0.3,
+                  } as any;
+                }
+              }
+            }
+          },
+          willDrawCell: (data) => {
+            const columnIndex = data.column.index;
+            const rowIndex = data.row.index;
+            const section = (data as any).section as "head" | "body" | "foot";
+            if (section === "body" && columnIndex === 10 && rowIndex === 5) {
+              const cell = data.cell;
+              // Fond gris de la cellule "Poids" (ligne 6) sans toucher aux bordures
+              const inset = 0.4;
+              doc.setFillColor(235, 235, 235);
+              doc.rect(
+                cell.x + inset,
+                cell.y + inset,
+                cell.width - 2 * inset,
+                cell.height - 2 * inset,
+                "F"
+              );
+            }
+          },
+        });
+      });
+
+      // Passer à la ligne suivante après chaque paire de semaines
+      yPosition = (doc as any).lastAutoTable.finalY + 6;
+    });
+
+    // Ajouter le tableau des résultats
+    if (yPosition + 35 > pageHeight - margin) {
+      doc.addPage();
+      yPosition = margin;
+    }
+
+    const totalAlimentation = calculateTotalAlimentation();
+    const finalWeight = calculateFinalWeight();
+    const conversionFactor = calculateConversionFactor();
+    const totalDeaths = calculateTotalDeaths();
+    const deathPercentage = calculateDeathPercentage();
+
+    const resultsData = [
+      [
+        totalAlimentation > 0
+          ? `${totalAlimentation.toFixed(2)} kg (${totalAlimentation / 50} sacs)`
+          : "-",
+        finalWeight !== null ? `${finalWeight} kg` : "-",
+        conversionFactor !== null ? conversionFactor.toFixed(3) : "-",
+        totalDeaths > 0 ? totalDeaths.toString() : "-",
+        deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-",
+        bande.notes || "-",
+      ],
+    ];
+
+    const resultsHead = [
+      [
+        {
+          content: "Tableau des Résultats",
+          colSpan: 6,
+          styles: {
+            halign: "center" as const,
+            fillColor: [220, 220, 220] as [number, number, number],
+            textColor: [50, 50, 50] as [number, number, number],
+            fontStyle: "bold" as const,
+          },
+        },
+      ],
+      [
+        "Alimentation Totale",
+        "Poids Final",
+        "Facteur de Conversion",
+        "Décès Total",
+        "Pourcentage de Mortalité",
+        "Notes",
+      ],
+    ];
+
+    autoTable(doc, {
+      head: resultsHead,
+      body: resultsData,
+      startY: yPosition + 4,
+      margin: { left: margin, right: margin },
+      theme: "grid",
+      styles: {
+        fontSize: 6,
+        cellPadding: 1,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.3,
+        halign: "center",
+        valign: "middle",
+        font: "helvetica",
+        textColor: [0, 0, 0],
+      },
+      headStyles: {
+        fillColor: [235, 235, 235],
+        textColor: [0, 0, 0],
+        fontStyle: "normal",
+        fontSize: 6,
+        cellPadding: 1,
+        halign: "center",
+        lineWidth: 0.3,
+        lineColor: [180, 180, 180],
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [60, 60, 60],
+        fontSize: 6,
+        cellPadding: 1,
+      },
+    });
+
+    // Sauvegarder le PDF
+    const fileName = `suivi_compact_batiment_${batiment.numero_batiment}_${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+    doc.save(fileName);
+    toast.success("PDF compact généré avec succès");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1020,18 +1478,44 @@ export default function SemainesView({
               Retour aux bâtiments
             </Button>
 
-            <Button onClick={generatePDF}>
-              <Download className="mr-2 h-4 w-4" />
-              Exporter PDF
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={openMaladieModal}>
+                <Plus className="mr-2 h-4 w-4" />
+                Ajouter maladies
+              </Button>
+              <Button onClick={generatePDF}>
+                <Download className="mr-2 h-4 w-4" />
+                Exporter PDF
+              </Button>
+              <Button onClick={generateCompactPDF}>
+                <Download className="mr-2 h-4 w-4" />
+                Exporter PDF Compact
+              </Button>
+            </div>
           </div>
 
           {/* Tableau de synthèse */}
-          <div className="bg-white dark:bg-slate-800 border border-slate-400/50 overflow-hidden mb-6">
+          <div className="bg-white dark:bg-slate-800 border mx-auto max-w-[1000px] border-slate-400/50 overflow-hidden mb-6">
             <Table>
               <TableBody>
                 <TableRow className="border-b border-slate-400/50">
-                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-orange-200/80 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Ferme
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {ferme.nom}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="border-b border-slate-400/50">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-orange-200/80 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Bâtiment
+                  </TableCell>
+                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
+                    {batiment.numero_batiment}
+                  </TableCell>
+                </TableRow>
+                <TableRow className="border-b border-slate-400/50">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-orange-200/80 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
                     Date d'Entrée
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
@@ -1043,15 +1527,7 @@ export default function SemainesView({
                   </TableCell>
                 </TableRow>
                 <TableRow className="border-b border-slate-400/50">
-                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
-                    Quantité
-                  </TableCell>
-                  <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
-                    {batiment.quantite}
-                  </TableCell>
-                </TableRow>
-                <TableRow className="border-b border-slate-400/50">
-                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-orange-200/80 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
                     Personnel
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
@@ -1059,7 +1535,7 @@ export default function SemainesView({
                   </TableCell>
                 </TableRow>
                 <TableRow className="border-b border-slate-400/50">
-                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-orange-200/80 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
                     Poussin
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
@@ -1067,19 +1543,29 @@ export default function SemainesView({
                   </TableCell>
                 </TableRow>
                 <TableRow className="border-b border-slate-400/50">
-                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
-                    Bâtiment
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-orange-200/80 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Quantité
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
-                    {batiment.numero_batiment}
+                    {batiment.quantite}
                   </TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-slate-200/70 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
-                    Ferme
+                  <TableCell className="font-medium text-slate-800 dark:text-slate-200 bg-orange-200/80 dark:bg-slate-700 border-r border-slate-400/50 w-1/2">
+                    Maladies
                   </TableCell>
                   <TableCell className="text-gray-700 dark:text-gray-300 bg-white dark:bg-white w-1/2">
-                    {ferme.nom}
+                    {batimentMaladies.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {batimentMaladies.map((m) => (
+                          <Badge key={m.id} variant="outline" className="border-slate-300/80">
+                            {m.nom}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">Aucune</span>
+                    )}
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -1092,7 +1578,7 @@ export default function SemainesView({
               <div key={semaine.id} className="flex items-end">
                 <div className="flex-1 overflow-x-auto border border-slate-400/50">
                   <Table className="min-w-full" data-semaine-id={semaine.id}>
-                    <TableHeader className="bg-slate-100 dark:bg-slate-800">
+                    <TableHeader className="bg-yellow-100 dark:bg-slate-800">
                       {/* Semaine X header row */}
                       <TableRow>
                         <TableHead
@@ -1412,7 +1898,7 @@ export default function SemainesView({
           {/* Tableau des résultats */}
           <div className="mt-8">
             <div className="bg-white dark:bg-slate-800 border border-slate-400/50 overflow-hidden">
-              <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-400/50">
+              <div className="bg-yellow-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-400/50">
                 <h2 className="font-semibold text-slate-800 dark:text-slate-200">
                   Tableau des Résultats
                 </h2>
@@ -1570,7 +2056,7 @@ export default function SemainesView({
                           onDoubleClick={handleNotesDoubleClick}
                           title="Double-cliquez pour modifier les notes"
                         >
-                          {bande.notes || "Double-cliquez pour ajouter des notes"}
+                          {bande.notes || "-"}
                         </div>
                       )}
                     </TableCell>
@@ -1581,6 +2067,95 @@ export default function SemainesView({
           </div>
         </div>
       </main>
+      {/* Modal: Ajouter des maladies */}
+      <Dialog open={isMaladieModalOpen} onOpenChange={setIsMaladieModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ajouter des maladies</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Maladies</Label>
+              <Popover open={maladieComboboxOpen} onOpenChange={setMaladieComboboxOpen}>
+                <PopoverTrigger>
+                  <Button variant="outline" role="combobox" className="w-full justify-between">
+                    {selectedMaladieIds.length > 0
+                      ? `${selectedMaladieIds.length} sélectionnée(s)`
+                      : "Choisir des maladies..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-[min(560px,calc(100vw-4rem))] max-w-none p-0"
+                  align="start"
+                >
+                  <Command>
+                    <CommandInput placeholder="Rechercher une maladie..." />
+                    <CommandList>
+                      <CommandEmpty>Aucune maladie trouvée.</CommandEmpty>
+                      <CommandGroup>
+                        {maladies.map((m) => (
+                          <CommandItem
+                            key={m.id}
+                            value={m.nom}
+                            onSelect={() => toggleSelectedMaladie(m.id)}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedMaladieIds.includes(m.id.toString())
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                            {m.nom}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {selectedMaladieIds.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedMaladieIds.map((idStr) => {
+                    const m = maladies.find((mm) => mm.id.toString() === idStr);
+                    return (
+                      <Badge key={idStr} variant="secondary" className="flex items-center gap-1">
+                        <span>{m?.nom ?? idStr}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleSelectedMaladie(parseInt(idStr, 10))}
+                          className="hover:text-destructive/80"
+                          aria-label={`Retirer ${m?.nom ?? idStr}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="apply-switch" className="mr-4">
+                Appliquer à tous les bâtiments de cette bande
+              </Label>
+              <Switch
+                id="apply-switch"
+                checked={applyToSameBande}
+                onCheckedChange={setApplyToSameBande}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsMaladieModalOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={submitMaladies}>Ajouter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

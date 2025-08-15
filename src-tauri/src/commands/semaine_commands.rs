@@ -1,9 +1,18 @@
 use crate::models::{Semaine, CreateSemaine, UpdateSemaine};
 use crate::repositories::semaine_repository::{SemaineRepository, SemaineRepositoryTrait};
 use crate::services::semaine_service::{SemaineService, SemaineWithDetails};
+use crate::models::Maladie;
 use crate::database::DatabaseManager;
 use std::sync::Arc;
 use tauri::State;
+use serde::Serialize;
+
+/// Réponse combinée des semaines et maladies pour un bâtiment
+#[derive(Serialize)]
+pub struct SemainesAndMaladies {
+    pub semaines: Vec<SemaineWithDetails>,
+    pub maladies: Vec<Maladie>,
+}
 
 /// Commande Tauri pour créer une nouvelle semaine
 /// 
@@ -133,16 +142,18 @@ pub async fn delete_semaine(
 /// * `db` - L'état de la base de données
 /// 
 /// # Returns
-/// Un `Result<Vec<SemaineWithDetails>, String>` contenant les 8 semaines complètes
+/// Un `Result<SemainesAndMaladies, String>` contenant les 8 semaines et maladies
 #[tauri::command]
 pub async fn get_full_semaines_by_batiment(
     batiment_id: i64,
     db: State<'_, Arc<DatabaseManager>>,
-) -> Result<Vec<SemaineWithDetails>, String> {
+) -> Result<SemainesAndMaladies, String> {
     let service = SemaineService::new(db.inner().clone());
     
-    service.get_full_semaines_by_batiment(batiment_id)
+    service
+        .get_full_semaines_with_maladies_by_batiment(batiment_id)
         .await
+        .map(|(semaines, maladies)| SemainesAndMaladies { semaines, maladies })
         .map_err(|e| e.to_string())
 }
 
