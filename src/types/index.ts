@@ -240,6 +240,7 @@ export interface SuiviQuotidienWithDetails {
   alimentation_par_jour: number | null;
   soins_id: number | null;
   soins_nom: string | null;
+  soins_unit: string | null;
   soins_quantite: string | null;
   analyses: string | null;
   remarques: string | null;
@@ -299,5 +300,6 @@ export interface BatimentWithSemaines {
 export interface Soin {
   id: number;
   nom: string;
+  unit: string;
   created_at: string;
 }

@@ -97,6 +97,7 @@ impl SemaineService {
                                 alimentation_par_jour: None,
                                 soins_id: None,
                                 soins_nom: None,
+                                soins_unit: None,
                                 soins_quantite: None,
                                 analyses: None,
                                 remarques: None,

@@ -53,7 +53,7 @@ pub struct UpdateSuiviQuotidien {
 
 /// Vue étendue du suivi quotidien avec les informations des soins
 /// 
-/// Inclut le nom des soins pour un affichage complet
+/// Inclut le nom et l'unité des soins pour un affichage complet
 /// sans nécessiter de requêtes supplémentaires côté frontend.
 /// Les totaux (deces_total, alimentation_total) sont calculés uniquement
 /// côté frontend et ne font pas partie de cette structure.
@@ -66,6 +66,7 @@ pub struct SuiviQuotidienWithDetails {
     pub alimentation_par_jour: Option<f64>,
     pub soins_id: Option<i64>,
     pub soins_nom: Option<String>,
+    pub soins_unit: Option<String>,
     pub soins_quantite: Option<String>,
     pub analyses: Option<String>,
     pub remarques: Option<String>,

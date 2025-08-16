@@ -81,7 +81,7 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         let mut stmt = conn.prepare(
             "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour,
                     sq.alimentation_par_jour, sq.soins_id, 
-                    s.nom as soins_nom, sq.soins_quantite, sq.analyses, sq.remarques
+                    s.nom as soins_nom, s.unit as soins_unit, sq.soins_quantite, sq.analyses, sq.remarques
              FROM suivi_quotidien sq
              LEFT JOIN soins s ON sq.soins_id = s.id
              ORDER BY sq.semaine_id, sq.age"
@@ -96,9 +96,10 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 alimentation_par_jour: row.get(4)?,
                 soins_id: row.get(5)?,
                 soins_nom: row.get(6)?,
-                soins_quantite: row.get(7)?,
-                analyses: row.get(8)?,
-                remarques: row.get(9)?,
+                soins_unit: row.get(7)?,
+                soins_quantite: row.get(8)?,
+                analyses: row.get(9)?,
+                remarques: row.get(10)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -112,7 +113,7 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         let suivi = conn.query_row(
             "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour,
                     sq.alimentation_par_jour, sq.soins_id, 
-                    s.nom as soins_nom, sq.soins_quantite, sq.analyses, sq.remarques
+                    s.nom as soins_nom, s.unit as soins_unit, sq.soins_quantite, sq.analyses, sq.remarques
              FROM suivi_quotidien sq
              LEFT JOIN soins s ON sq.soins_id = s.id
              WHERE sq.id = ?1",
@@ -125,9 +126,10 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 alimentation_par_jour: row.get(4)?,
                 soins_id: row.get(5)?,
                 soins_nom: row.get(6)?,
-                soins_quantite: row.get(7)?,
-                analyses: row.get(8)?,
-                remarques: row.get(9)?,
+                soins_unit: row.get(7)?,
+                soins_quantite: row.get(8)?,
+                analyses: row.get(9)?,
+                remarques: row.get(10)?,
             }),
         ).map_err(|e| match e {
             rusqlite::Error::QueryReturnedNoRows => AppError::not_found("SuiviQuotidien", id),
@@ -212,7 +214,7 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
         let mut stmt = conn.prepare(
             "SELECT sq.id, sq.semaine_id, sq.age, sq.deces_par_jour,
                     sq.alimentation_par_jour, sq.soins_id, 
-                    s.nom as soins_nom, sq.soins_quantite, sq.analyses, sq.remarques
+                    s.nom as soins_nom, s.unit as soins_unit, sq.soins_quantite, sq.analyses, sq.remarques
              FROM suivi_quotidien sq
              LEFT JOIN soins s ON sq.soins_id = s.id
              WHERE sq.semaine_id = ?1
@@ -228,9 +230,10 @@ impl SuiviQuotidienRepositoryTrait for SuiviQuotidienRepository {
                 alimentation_par_jour: row.get(4)?,
                 soins_id: row.get(5)?,
                 soins_nom: row.get(6)?,
-                soins_quantite: row.get(7)?,
-                analyses: row.get(8)?,
-                remarques: row.get(9)?,
+                soins_unit: row.get(7)?,
+                soins_quantite: row.get(8)?,
+                analyses: row.get(9)?,
+                remarques: row.get(10)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;

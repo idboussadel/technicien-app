@@ -26,8 +26,23 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Check, ChevronsUpDown, Download, Plus, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  ChevronsUpDown,
+  ChevronDown,
+  Download,
+  Plus,
+  X,
+  FileText,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import toast from "react-hot-toast";
 import {
   BatimentWithDetails,
@@ -43,6 +58,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { cn } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { font1, font2 } from "@/assets/fonts/font-arabic";
 
 interface SemainesViewProps {
   batiment: BatimentWithDetails;
@@ -825,7 +841,9 @@ export default function SemainesView({
             ? suivi.alimentation_total.toString()
             : "-",
           suivi.soins_nom || "-",
-          suivi.soins_quantite?.toString() || "-",
+          suivi.soins_quantite && suivi.soins_unit
+            ? `${suivi.soins_quantite} ${suivi.soins_unit === "l" ? "L" : suivi.soins_unit}`
+            : suivi.soins_quantite?.toString() || "-",
           suivi.analyses || "-",
           suivi.remarques || "-",
         ];
@@ -1197,7 +1215,9 @@ export default function SemainesView({
               ? suivi.alimentation_total.toString()
               : "-",
             suivi.soins_nom || "-",
-            suivi.soins_quantite?.toString() || "-",
+            suivi.soins_quantite && suivi.soins_unit
+              ? `${suivi.soins_quantite} ${suivi.soins_unit === "l" ? "L" : suivi.soins_unit}`
+              : suivi.soins_quantite?.toString() || "-",
             suivi.analyses || "-",
             suivi.remarques || "-",
           ];
@@ -1216,33 +1236,98 @@ export default function SemainesView({
           return row;
         });
 
-        // Headers avec titre de semaine et colonnes compactes
+        // Headers avec titre de semaine et colonnes compactes (3-row structure like Arabic)
         const headers = [
           [
             {
               content: `Semaine ${semaine.numero_semaine}`,
-              colSpan: 10, // Only span from Jour to Remarques, not including Poids
+              colSpan: 10, // Span from Jour to Remarques (columns 0-9)
               styles: {
                 halign: "center" as const,
                 fillColor: [220, 220, 220] as [number, number, number],
                 textColor: [0, 0, 0] as [number, number, number],
                 fontStyle: "bold" as const,
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
               },
             },
             "", // Empty cell for Poids column
           ],
           [
-            "Jour",
-            "Date",
-            "Décès (Jour)",
-            "Décès (Total)",
-            "Alim (Jour)",
-            "Alim (Total)",
-            "Soins (Traitement)",
-            "Quantité",
-            "Analyses",
-            "Remarques",
-            "", // Remove "Poids" from column header
+            {
+              content: "Jour",
+              rowSpan: 2, // Span 2 rows
+            },
+            {
+              content: "Date",
+              rowSpan: 2, // Span 2 rows
+            },
+            {
+              content: "Décès",
+              colSpan: 2, // Span over death columns (2-3)
+              styles: {
+                halign: "center" as const,
+                fillColor: [235, 235, 235] as [number, number, number],
+                textColor: [60, 60, 60] as [number, number, number],
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
+              },
+            },
+            {
+              content: "Alimentation",
+              colSpan: 2, // Span over nutrition columns (4-5)
+              styles: {
+                halign: "center" as const,
+                fillColor: [235, 235, 235] as [number, number, number],
+                textColor: [60, 60, 60] as [number, number, number],
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
+              },
+            },
+            {
+              content: "Soins",
+              colSpan: 2, // Span over treatment columns (6-7)
+              styles: {
+                halign: "center" as const,
+                fillColor: [235, 235, 235] as [number, number, number],
+                textColor: [60, 60, 60] as [number, number, number],
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
+              },
+            },
+            {
+              content: "Analyses",
+              rowSpan: 2, // Span 2 rows
+            },
+            {
+              content: "Remarques",
+              rowSpan: 2, // Span 2 rows
+            },
+            "", // Empty cell for Poids column
+          ],
+          [
+            "Jour", // Daily (for deaths)
+            "Total", // Total (for deaths)
+            "Jour", // Daily (for nutrition)
+            "Total", // Total (for nutrition)
+            "Traitement", // Treatment name
+            "Quantité", // Treatment quantity
           ],
         ];
 
@@ -1287,14 +1372,14 @@ export default function SemainesView({
           columnStyles: {
             0: { cellWidth: 5 }, // Jour
             1: { cellWidth: 8 }, // Date
-            2: { cellWidth: 8 }, // Décès (Jour) - 2 digits max
-            3: { cellWidth: 8 }, // Décès (Total) - 2 digits max
+            2: { cellWidth: 7 }, // Décès (Jour) - 2 digits max
+            3: { cellWidth: 7 }, // Décès (Total) - 2 digits max
             4: { cellWidth: 8 }, // Alim (Jour) - 2 digits max
             5: { cellWidth: 8 }, // Alim (Total) - 2 digits max
-            6: { cellWidth: 12 }, // Soins (Traitement)
+            6: { cellWidth: 14 }, // Soins (Traitement)
             7: { cellWidth: 8 }, // Quantité - prevent wrapping
-            8: { cellWidth: 8 }, // Analyses - prevent wrapping
-            9: { cellWidth: 12 }, // Remarques
+            8: { cellWidth: 9 }, // Analyses - prevent wrapping
+            9: { cellWidth: 11 }, // Remarques
             10: { cellWidth: 13 }, // Poids - wider for better readability
           },
           didParseCell: (data) => {
@@ -1303,40 +1388,54 @@ export default function SemainesView({
             const rowIndex = data.row.index;
             const lastCol = data.table.columns.length - 1;
 
-            // PDF: make the two top cells of the last column (in the header rows)
-            // white and remove top/right/bottom borders; keep a thin left separator
-            if (section === "head" && col === lastCol && (rowIndex === 0 || rowIndex === 1)) {
-              data.cell.styles.fillColor = [255, 255, 255];
-              (data.cell.styles as any).lineWidth = {
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0.3,
-              } as any;
+            // Handle header styling - weight column (col 10) gets special treatment
+            if (section === "head") {
+              if (col === 10) {
+                // Weight column (column 10) in all header rows - white background, but keep left border for continuity
+                data.cell.styles.fillColor = [255, 255, 255]; // White background
+                data.cell.styles.lineWidth = {
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0.3, // Keep left border to connect with Remarques cell
+                } as any;
+              } else {
+                // All other columns in all header rows - gray background with borders
+                if (rowIndex === 0) {
+                  data.cell.styles.fillColor = [220, 220, 220]; // Week header gray
+                } else {
+                  data.cell.styles.fillColor = [235, 235, 235]; // All other header rows gray
+                }
+                data.cell.styles.lineWidth = {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any;
+              }
             }
 
-            if (col === 10) {
-              if (section === "body") {
-                // Start by hiding top/right/bottom for all Poids BODY cells, keep left separator
-                const baseLineWidth = { top: 0, right: 0, bottom: 0, left: 0.3 } as any;
-                data.cell.styles.lineWidth = baseLineWidth;
-
-                if (rowIndex === 5) {
-                  // Visible box for the "Poids" label row
+            // For body cells, handle weight column special styling
+            if (section === "body") {
+              if (col === 10) {
+                if (rowIndex === 5 || rowIndex === 6) {
+                  // Weight label and value rows get full borders
                   data.cell.styles.lineWidth = {
                     top: 0.3,
                     right: 0.3,
                     bottom: 0.3,
                     left: 0.3,
                   } as any;
-                } else if (rowIndex === 6) {
-                  // Value row: include top border to visually match adjacent cells
+                } else {
+                  // All other rows in weight column get NO borders and white background
                   data.cell.styles.lineWidth = {
-                    top: 0.3,
-                    right: 0.3,
-                    bottom: 0.3,
-                    left: 0.3,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0.3, // Keep left border for continuity
                   } as any;
+                  data.cell.styles.fillColor = [255, 255, 255]; // Force white background
+                  data.cell.styles.textColor = [255, 255, 255]; // Hide text in non-weight rows
                 }
               }
             }
@@ -1345,11 +1444,12 @@ export default function SemainesView({
             const columnIndex = data.column.index;
             const rowIndex = data.row.index;
             const section = (data as any).section as "head" | "body" | "foot";
+
+            // Weight column (column 10) - draw background for weight label row only
             if (section === "body" && columnIndex === 10 && rowIndex === 5) {
               const cell = data.cell;
-              // Fond gris de la cellule "Poids" (ligne 6) sans toucher aux bordures
               const inset = 0.4;
-              doc.setFillColor(235, 235, 235);
+              doc.setFillColor(235, 235, 235); // Gray background for weight label
               doc.rect(
                 cell.x + inset,
                 cell.y + inset,
@@ -1357,6 +1457,20 @@ export default function SemainesView({
                 cell.height - 2 * inset,
                 "F"
               );
+            }
+
+            // Force white background for all other rows in weight column
+            if (section === "body" && columnIndex === 10 && rowIndex !== 5 && rowIndex !== 6) {
+              const cell = data.cell;
+              doc.setFillColor(255, 255, 255); // White background
+              doc.rect(cell.x, cell.y, cell.width, cell.height, "F");
+            }
+
+            // Force white background for weight column header cells (all rows)
+            if (section === "head" && columnIndex === 10) {
+              const cell = data.cell;
+              doc.setFillColor(255, 255, 255); // White background
+              doc.rect(cell.x, cell.y, cell.width, cell.height, "F");
             }
           },
         });
@@ -1456,6 +1570,567 @@ export default function SemainesView({
     toast.success("PDF compact généré avec succès");
   };
 
+  /**
+   * Génère un PDF compact en arabe avec layout RTL du suivi hebdomadaire
+   */
+  const generateArabicCompactPDF = () => {
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    // Load and set Arabic fonts properly
+    try {
+      // Load the Rubik font for Latin text
+      doc.addFileToVFS("Rubik-VariableFont_wght-normal.ttf", font1);
+      doc.addFont("Rubik-VariableFont_wght-normal.ttf", "Rubik-VariableFont_wght", "normal");
+
+      // Load the HONOR Arabic font for Arabic text
+      doc.addFileToVFS("HONORSansArabicUI-R-normal.ttf", font2);
+      doc.addFont("HONORSansArabicUI-R-normal.ttf", "HONORSansArabicUI-R", "normal");
+
+      // Set the Arabic font as default
+      doc.setFont("HONORSansArabicUI-R");
+      console.log("Arabic fonts loaded successfully");
+    } catch (error) {
+      console.error("Failed to load Arabic fonts:", error);
+      // Fallback to a system font
+      doc.setFont("times");
+      console.log("Using fallback font: times");
+    }
+
+    // Configuration des marges et largeurs
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 6;
+    const tableWidth = (pageWidth - 2 * margin - 2) / 2;
+
+    let yPosition = margin;
+
+    // Ajouter le tableau de synthèse avec layout RTL (VALUE first, then LABEL)
+    const summaryData = [
+      [ferme.nom || "-", "الضيعة"],
+      [batiment.numero_batiment?.toString() || "-", "رقم الكوري"],
+      [
+        new Date(bande.date_entree).toLocaleDateString("fr-FR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        "تاريخ الدخول",
+      ],
+      [batiment.personnel_nom || "-", "الموظفين"],
+      [batiment.poussin_nom || "-", "المحضنة الاصل"],
+      [batiment.quantite?.toString() || "-", "الكمية"],
+    ];
+
+    // Calculate position to place summary table on the far right
+    const summaryTableWidth = 90;
+    const summaryTableX = pageWidth - margin - summaryTableWidth;
+
+    autoTable(doc, {
+      body: summaryData,
+      startY: yPosition,
+      margin: { left: summaryTableX, right: margin },
+      theme: "grid",
+      styles: {
+        fontSize: 7,
+        cellPadding: 1.5,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.3,
+        halign: "right",
+        valign: "middle",
+        font: "HONORSansArabicUI-R", // Default Arabic font for labels
+        textColor: [60, 60, 60],
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        fontSize: 7,
+        cellPadding: 1.5,
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 45,
+          halign: "right",
+          font: "Rubik-VariableFont_wght", // Latin font for data values
+        },
+        1: {
+          cellWidth: 45,
+          fillColor: [220, 220, 220],
+          halign: "right",
+          textColor: [0, 0, 0],
+          font: "HONORSansArabicUI-R", // Arabic font for labels
+        },
+      },
+      alternateRowStyles: {
+        fillColor: [255, 255, 255],
+      },
+    });
+
+    yPosition = (doc as any).lastAutoTable.finalY + 4;
+
+    // Grouper les semaines par paires pour l'affichage côte à côte (RTL: droite à gauche)
+    const semainesPairs = [];
+    for (let i = 0; i < semaines.length; i += 2) {
+      semainesPairs.push(semaines.slice(i, i + 2));
+    }
+
+    // Parcourir chaque paire de semaines
+    semainesPairs.forEach((semainesPair, pairIndex) => {
+      if (yPosition + 70 > pageHeight - margin) {
+        doc.addPage();
+        yPosition = margin;
+      }
+
+      // Position X pour chaque table (RTL: Odd weeks RIGHT, Even weeks LEFT)
+      const week1TableX = pageWidth - margin - tableWidth; // Odd weeks (1,3,5...) go to RIGHT (far right)
+      const week2TableX = pageWidth - margin - 2 * tableWidth - 2; // Even weeks (2,4,6...) go to LEFT
+
+      // RTL: Odd weeks (1,3,5...) go to RIGHT, Even weeks (2,4,6...) go to LEFT
+      semainesPair.forEach((semaine, tableIndex) => {
+        // Check if week number is odd or even to determine position
+        const isOddWeek = semaine.numero_semaine % 2 === 1;
+        const tableX = isOddWeek ? week1TableX : week2TableX;
+
+        // Préparer les données pour la table avec ordre RTL (colonnes inversées)
+        const tableData = semaine.suivi_quotidien.map((suivi, rowIndex) => {
+          // RTL: Poids d'abord, puis Notes, Analyses, etc. jusqu'à Jour en dernier
+          const row = [
+            // Colonne 0: Poids (pour les lignes 6 et 7)
+            rowIndex === 5
+              ? "الوزن"
+              : rowIndex === 6
+              ? semaine.poids !== null && semaine.poids !== undefined
+                ? `${semaine.poids} kg`
+                : "-"
+              : "",
+            // Colonne 1: Notes
+            suivi.remarques || "-",
+            // Colonne 2: Analyses
+            suivi.analyses || "-",
+            // Colonne 3: العلاج - الكمية (Treatment Quantity)
+            suivi.soins_quantite && suivi.soins_unit
+              ? `${suivi.soins_quantite} ${suivi.soins_unit === "l" ? "L" : suivi.soins_unit}`
+              : suivi.soins_quantite?.toString() || "-",
+            // Colonne 4: العلاج - الاسم (Treatment Name)
+            suivi.soins_nom || "-",
+            // Colonne 5: Alimentation (total)
+            suivi.alimentation_par_jour !== null &&
+            suivi.alimentation_par_jour !== undefined &&
+            suivi.alimentation_total &&
+            suivi.alimentation_total > 0
+              ? suivi.alimentation_total.toString()
+              : "-",
+            // Colonne 6: Alimentation (jour)
+            suivi.alimentation_par_jour?.toString() || "-",
+            // Colonne 7: Décès (total)
+            suivi.deces_par_jour !== null &&
+            suivi.deces_par_jour !== undefined &&
+            suivi.deces_total &&
+            suivi.deces_total > 0
+              ? suivi.deces_total.toString()
+              : "-",
+            // Colonne 8: Décès (jour)
+            suivi.deces_par_jour?.toString() || "-",
+            // Colonne 9: Date
+            getDateForAge(suivi.age),
+            // Colonne 10: Jour
+            suivi.age.toString(),
+          ];
+
+          return row;
+        });
+
+        // Headers avec titre de semaine et colonnes compactes (RTL - ordre inversé)
+        const headers = [
+          [
+            "", // Empty cell for weight column (column 0)
+            {
+              content: `الأسبوع ${semaine.numero_semaine}`,
+              colSpan: 10, // Span from ملاحظات to اليوم (columns 1-10)
+              styles: {
+                halign: "center" as const,
+                fillColor: [220, 220, 220] as [number, number, number],
+                textColor: [0, 0, 0] as [number, number, number],
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
+              },
+            },
+          ],
+          [
+            "", // Empty cell for weight column (column 0)
+            {
+              content: "ملاحظات",
+              rowSpan: 2,
+            },
+            {
+              content: "التحاليل",
+              rowSpan: 2,
+            },
+            {
+              content: "العلاجات",
+              colSpan: 2, // Span over treatment columns (3-4)
+              styles: {
+                halign: "center" as const,
+                fillColor: [235, 235, 235] as [number, number, number],
+                textColor: [60, 60, 60] as [number, number, number],
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
+              },
+            },
+            {
+              content: "التغذية",
+              colSpan: 2, // Span over nutrition columns (5-6)
+              styles: {
+                halign: "center" as const,
+                fillColor: [235, 235, 235] as [number, number, number],
+                textColor: [60, 60, 60] as [number, number, number],
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
+              },
+            },
+            {
+              content: "الوفيات",
+              colSpan: 2, // Span over death columns (7-8)
+              styles: {
+                halign: "center" as const,
+                fillColor: [235, 235, 235] as [number, number, number],
+                textColor: [60, 60, 60] as [number, number, number],
+                lineWidth: {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any,
+              },
+            },
+            {
+              content: "التاريخ",
+              rowSpan: 2,
+            },
+            {
+              content: "اليوم",
+              rowSpan: 2,
+            },
+          ],
+          [
+            "",
+            "الكمية", // Quantity (for treatment)
+            "الاسم", // Name (for treatment)
+            "الجمع", // Total (for nutrition)
+            "اليوم", // Day (for nutrition)
+            "الجمع", // Total (for deaths)
+            "اليوم", // Day (for deaths)
+          ],
+        ];
+
+        // Créer la table compacte
+        autoTable(doc, {
+          head: headers,
+          body: tableData,
+          startY: yPosition,
+          margin: { left: tableX, right: pageWidth - tableX - tableWidth },
+          tableWidth: tableWidth,
+          theme: "grid",
+          styles: {
+            fontSize: 6,
+            cellPadding: 1,
+            lineColor: [180, 180, 180],
+            lineWidth: 0.3,
+            halign: "center",
+            valign: "middle",
+            font: "HONORSansArabicUI-R",
+            textColor: [60, 60, 60],
+            overflow: "linebreak",
+          },
+          headStyles: {
+            fillColor: [235, 235, 235],
+            textColor: [60, 60, 60],
+            fontStyle: "normal",
+            fontSize: 5,
+            cellPadding: 0.5,
+            halign: "center",
+            lineWidth: 0.3,
+            lineColor: [180, 180, 180],
+            font: "HONORSansArabicUI-R", // Arabic font for Arabic headers
+          },
+          bodyStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontSize: 6,
+            cellPadding: 1,
+            font: "Rubik-VariableFont_wght", // Latin font for data values
+          },
+          alternateRowStyles: {
+            fillColor: [255, 255, 255],
+          },
+          columnStyles: {
+            0: { cellWidth: 13 }, // الوزن (Weight)
+            1: { cellWidth: 12 }, // ملاحظات (Notes)
+            2: { cellWidth: 9 }, // التحاليل (Analysis)
+            3: { cellWidth: 8 }, // العلاج - الكمية (Treatment Quantity)
+            4: { cellWidth: 14 }, // العلاج - الاسم (Treatment Name)
+            5: { cellWidth: 7 }, // التغذية (المجموع) (Feeding Total)
+            6: { cellWidth: 7 }, // التغذية (اليوم) (Feeding Daily)
+            7: { cellWidth: 7 }, // الوفيات (المجموع) (Deaths Total)
+            8: { cellWidth: 7 }, // الوفيات (اليوم) (Deaths Daily)
+            9: { cellWidth: 8 }, // التاريخ (Date)
+            10: { cellWidth: 6 }, // اليوم (Day)
+          },
+          didParseCell: (data) => {
+            const col = data.column.index;
+            const section = (data as any).section as "head" | "body" | "foot";
+            const rowIndex = data.row.index;
+            const lastCol = data.table.columns.length - 1;
+
+            // PDF: make the two top cells of the last column (in the header rows)
+            // white and remove top/right/bottom borders; keep a thin left separator
+            if (section === "head" && col === lastCol && (rowIndex === 0 || rowIndex === 1)) {
+              data.cell.styles.fillColor = [255, 255, 255];
+              (data.cell.styles as any).lineWidth = {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0.3,
+              } as any;
+            }
+
+            // For body cells, check if content contains Arabic text and set appropriate font
+            if (section === "body") {
+              const cellText = data.cell.text.join(" ");
+              // If cell contains Arabic characters, use Arabic font
+              if (/[\u0600-\u06FF]/.test(cellText)) {
+                data.cell.styles.font = "HONORSansArabicUI-R";
+              } else {
+                data.cell.styles.font = "Rubik-VariableFont_wght";
+              }
+            }
+
+            // Handle header styling - weight column (col 0) gets special treatment
+            if (section === "head") {
+              if (col === 0) {
+                // Weight column (column 0) in all header rows - white background, but keep right border for continuity
+                data.cell.styles.fillColor = [255, 255, 255]; // White background
+                data.cell.styles.lineWidth = {
+                  top: 0,
+                  right: 0.3, // Keep right border to connect with ملاحظات cell
+                  bottom: 0,
+                  left: 0,
+                } as any;
+              } else {
+                // All other columns in all header rows - gray background with borders
+                if (rowIndex === 0) {
+                  data.cell.styles.fillColor = [220, 220, 220]; // Week header gray
+                } else {
+                  data.cell.styles.fillColor = [235, 235, 235]; // All other header rows gray
+                }
+                data.cell.styles.lineWidth = {
+                  top: 0.3,
+                  right: 0.3,
+                  bottom: 0.3,
+                  left: 0.3,
+                } as any;
+
+                // For single-column headers (col 1,2,3,4,9,10), make them appear to span both rows
+                if (
+                  rowIndex === 1 &&
+                  (col === 1 || col === 2 || col === 3 || col === 4 || col === 9 || col === 10)
+                ) {
+                  // These are single-column headers that should appear to span both rows
+                  // Keep the same styling but they'll naturally span both rows
+                }
+              }
+            }
+
+            // For body cells, apply weight column special styling
+            if (section === "body") {
+              // Handle weight column (now column 0) - special styling for rows 5 and 6 only
+              if (col === 0) {
+                if (rowIndex === 5 || rowIndex === 6) {
+                  // Weight label and value rows get full borders
+                  data.cell.styles.lineWidth = {
+                    top: 0.3,
+                    right: 0.3,
+                    bottom: 0.3,
+                    left: 0.3,
+                  } as any;
+                } else {
+                  // All other rows in weight column get NO borders and white background
+                  data.cell.styles.lineWidth = {
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    left: 0,
+                  } as any;
+                  data.cell.styles.fillColor = [255, 255, 255]; // Force white background
+                  data.cell.styles.textColor = [255, 255, 255]; // Hide text in non-weight rows
+                }
+              }
+            }
+          },
+          willDrawCell: (data) => {
+            const columnIndex = data.column.index;
+            const rowIndex = data.row.index;
+            const section = (data as any).section as "head" | "body" | "foot";
+
+            // Weight column (now column 0) - draw background for weight label row only
+            if (section === "body" && columnIndex === 0 && rowIndex === 5) {
+              const cell = data.cell;
+              const inset = 0.4;
+              doc.setFillColor(235, 235, 235); // Gray background for weight label
+              doc.rect(
+                cell.x + inset,
+                cell.y + inset,
+                cell.width - 2 * inset,
+                cell.height - 2 * inset,
+                "F"
+              );
+            }
+
+            // Force white background for all other rows in weight column
+            if (section === "body" && columnIndex === 0 && rowIndex !== 5 && rowIndex !== 6) {
+              const cell = data.cell;
+              doc.setFillColor(255, 255, 255); // White background
+              doc.rect(cell.x, cell.y, cell.width, cell.height, "F");
+            }
+
+            // Force white background for weight column header cells (all header rows)
+            if (section === "head" && columnIndex === 0) {
+              const cell = data.cell;
+              doc.setFillColor(255, 255, 255); // White background
+              doc.rect(cell.x, cell.y, cell.width, cell.height, "F");
+            }
+          },
+        });
+      });
+
+      yPosition = (doc as any).lastAutoTable.finalY + 6;
+    });
+
+    // Ajouter le tableau des résultats
+    if (yPosition + 35 > pageHeight - margin) {
+      doc.addPage();
+      yPosition = margin;
+    }
+
+    const totalAlimentation = calculateTotalAlimentation();
+    const finalWeight = calculateFinalWeight();
+    const conversionFactor = calculateConversionFactor();
+    const totalDeaths = calculateTotalDeaths();
+    const deathPercentage = calculateDeathPercentage();
+
+    const resultsData = [
+      [
+        totalAlimentation > 0
+          ? `${totalAlimentation.toFixed(2)} kg (${totalAlimentation / 50} أكياس)`
+          : "-",
+        finalWeight !== null ? `${finalWeight} kg` : "-",
+        conversionFactor !== null ? conversionFactor.toFixed(3) : "-",
+        totalDeaths > 0 ? totalDeaths.toString() : "-",
+        deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-",
+        bande.notes || "-",
+      ],
+    ];
+
+    const resultsHead = [
+      [
+        {
+          content: "جدول النتائج",
+          colSpan: 6,
+          styles: {
+            halign: "center" as const,
+            fillColor: [220, 220, 220] as [number, number, number],
+            textColor: [50, 50, 50] as [number, number, number],
+          },
+        },
+      ],
+      [
+        "التغذية الإجمالية",
+        "الوزن النهائي",
+        "عامل التحويل",
+        "إجمالي الوفيات",
+        "نسبة الوفيات",
+        "ملاحظات",
+      ],
+    ];
+
+    // Calculate position for results table to be consistent with RTL layout
+    const resultsTableWidth = pageWidth - 2 * margin;
+    const resultsTableX = margin; // Keep it centered but could be adjusted if needed
+
+    autoTable(doc, {
+      head: resultsHead,
+      body: resultsData,
+      startY: yPosition + 4,
+      margin: { left: resultsTableX, right: margin },
+      theme: "grid",
+      styles: {
+        fontSize: 6,
+        cellPadding: 1,
+        lineColor: [180, 180, 180],
+        lineWidth: 0.3,
+        halign: "center",
+        valign: "middle",
+        font: "HONORSansArabicUI-R", // Arabic font for Arabic headers
+        textColor: [0, 0, 0],
+      },
+      headStyles: {
+        fillColor: [235, 235, 235],
+        textColor: [0, 0, 0],
+        fontStyle: "normal",
+        fontSize: 6,
+        cellPadding: 1,
+        halign: "center",
+        lineWidth: 0.3,
+        lineColor: [180, 180, 180],
+        font: "HONORSansArabicUI-R", // Arabic font for Arabic headers
+      },
+      bodyStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [60, 60, 60],
+        fontSize: 6,
+        cellPadding: 1,
+        font: "Rubik-VariableFont_wght", // Latin font for data values
+      },
+      didParseCell: (data) => {
+        const section = (data as any).section as "head" | "body" | "foot";
+        const col = data.column.index;
+
+        // For body cells, check if content contains Arabic text
+        if (section === "body") {
+          const cellText = data.cell.text.join(" ");
+          // If cell contains Arabic characters, use Arabic font
+          if (/[\u0600-\u06FF]/.test(cellText)) {
+            data.cell.styles.font = "HONORSansArabicUI-R";
+          } else {
+            data.cell.styles.font = "Rubik-VariableFont_wght";
+          }
+        }
+      },
+    });
+
+    // Sauvegarder le PDF
+    const fileName = `suivi_compact_arabe_batiment_${batiment.numero_batiment}_${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+    doc.save(fileName);
+    toast.success("PDF compact arabe généré avec succès");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1483,14 +2158,30 @@ export default function SemainesView({
                 <Plus className="mr-2 h-4 w-4" />
                 Ajouter maladies
               </Button>
-              <Button onClick={generatePDF}>
-                <Download className="mr-2 h-4 w-4" />
-                Exporter PDF
-              </Button>
-              <Button onClick={generateCompactPDF}>
-                <Download className="mr-2 h-4 w-4" />
-                Exporter PDF Compact
-              </Button>
+              {/* PDF Generation Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger>
+                  <Button variant="outline">
+                    <Download className="mr-2 h-4 w-4" />
+                    Exporter PDF
+                    <ChevronDown className="ml-2 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={generatePDF}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    PDF Normal
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={generateCompactPDF}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    PDF Compact Français
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={generateArabicCompactPDF}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    PDF Compact Arabe
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -1579,49 +2270,92 @@ export default function SemainesView({
                 <div className="flex-1 overflow-x-auto border border-slate-400/50">
                   <Table className="min-w-full" data-semaine-id={semaine.id}>
                     <TableHeader className="bg-yellow-100 dark:bg-slate-800">
-                      {/* Semaine X header row */}
+                      {/* Row 0: Week header - spans all columns */}
                       <TableRow>
                         <TableHead
-                          colSpan={10}
-                          className="text-center font-bold text-slate-800 dark:text-slate-200 py-2 bg-slate-200 dark:bg-slate-700 border-b border-slate-400/50"
+                          colSpan={11}
+                          className="text-center font-bold text-slate-800 dark:text-slate-200 bg-slate-200 dark:bg-slate-700 border-b border-slate-400/50"
                         >
                           Semaine {semaine.numero_semaine}
                         </TableHead>
                       </TableRow>
-                      {/* Column headers row */}
+
+                      {/* Row 1: Main category headers with merged cells */}
                       <TableRow>
-                        <TableHead className="w-[60px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
+                        {/* Single-column headers that span 2 rows */}
+                        <TableHead
+                          rowSpan={2}
+                          className="w-[60px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 !py-0 !h-8 !min-h-0"
+                        >
                           Jour
                         </TableHead>
-                        <TableHead className="w-[80px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
+                        <TableHead
+                          rowSpan={2}
+                          className="w-[80px] text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 !py-0 !h-8 !min-h-0"
+                        >
                           Date
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
-                          Décès (Jour)
+
+                        {/* Multi-column headers that span 2 columns */}
+                        <TableHead
+                          colSpan={2}
+                          className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 !py-0 !h-8 !min-h-0"
+                        >
+                          Décès
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
-                          <div className="flex items-center justify-center">Décès (Total)</div>
+                        <TableHead
+                          colSpan={2}
+                          className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 !py-0 !h-8 !min-h-0"
+                        >
+                          Alimentation
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
-                          Alimentation (Jour)
+                        <TableHead
+                          colSpan={2}
+                          className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 !py-0 !h-8 !min-h-0"
+                        >
+                          Soins
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
-                          <div className="flex items-center justify-center">
-                            Alimentation (Total)
-                          </div>
-                        </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
-                          Soins (Traitement)
-                        </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
-                          Soins (Quantité)
-                        </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
+
+                        {/* Single-column headers that span 2 rows */}
+                        <TableHead
+                          rowSpan={2}
+                          className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 !py-0 !h-8 !min-h-0"
+                        >
                           Analyses
                         </TableHead>
-                        <TableHead className="text-center text-slate-700 dark:text-slate-300 border-b border-slate-400/50">
+                        <TableHead
+                          rowSpan={2}
+                          className="text-center text-slate-700 dark:text-slate-300 border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 !py-0 !h-8 !min-h-0"
+                        >
                           Remarques
                         </TableHead>
+                      </TableRow>
+
+                      {/* Row 2: Sub-category headers */}
+                      <TableRow>
+                        {/* Empty cells for rowSpan headers above */}
+                        {/* Décès sub-headers */}
+                        <TableHead className="text-center text-slate-600 dark:text-slate-400 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 text-sm !py-0 !h-8 !min-h-0">
+                          Jour
+                        </TableHead>
+                        <TableHead className="text-center text-slate-600 dark:text-slate-400 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 text-sm !py-0 !h-8 !min-h-0">
+                          Total
+                        </TableHead>
+                        {/* Alimentation sub-headers */}
+                        <TableHead className="text-center text-slate-600 dark:text-slate-400 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 text-sm !py-0 !h-8 !min-h-0">
+                          Jour
+                        </TableHead>
+                        <TableHead className="text-center text-slate-600 dark:text-slate-400 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 text-sm !py-0 !h-8 !min-h-0">
+                          Total
+                        </TableHead>
+                        {/* Soins sub-headers */}
+                        <TableHead className="text-center text-slate-600 dark:text-slate-400 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 text-sm !py-0 !h-8 !min-h-0">
+                          Traitement
+                        </TableHead>
+                        <TableHead className="text-center text-slate-600 dark:text-slate-400 border-r border-b border-slate-400/50 bg-yellow-100 dark:bg-yellow-100 text-sm !py-0 !h-8 !min-h-0">
+                          Quantité
+                        </TableHead>
+                        {/* Empty cells for rowSpan headers */}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1633,7 +2367,6 @@ export default function SemainesView({
                           <TableCell className="text-center text-gray-700 dark:text-gray-300 border-r border-b border-slate-400/50 bg-white dark:bg-white">
                             {getDateForAge(suivi.age)}
                           </TableCell>
-
                           {/* Editable Cells */}
                           {[
                             "deces_par_jour",
@@ -1682,6 +2415,15 @@ export default function SemainesView({
                             } else if (field === "soins_id") {
                               // Utiliser directement soins_nom au lieu de chercher dans la liste
                               displayValue = suivi.soins_nom || (value ? "Soin inconnu" : "");
+                            } else if (field === "soins_quantite") {
+                              // Afficher la quantité avec l'unité si disponible
+                              if (value && suivi.soins_unit) {
+                                // Format: "3 L" instead of "3 l" for better readability (L looks better than l)
+                                const unit = suivi.soins_unit === "l" ? "L" : suivi.soins_unit;
+                                displayValue = `${value} ${unit}`;
+                              } else {
+                                displayValue = value;
+                              }
                             }
 
                             const isEditable = canEditCell(semaine.id!, suivi.age, fieldKey);
@@ -1826,7 +2568,7 @@ export default function SemainesView({
                                 )}
                               </TableCell>
                             );
-                          })}
+                          })}{" "}
                         </TableRow>
                       ))}
                     </TableBody>
