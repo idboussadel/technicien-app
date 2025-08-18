@@ -27,10 +27,18 @@ impl BandeRepository {
             ));
         }
 
+        // Get the next numero_bande for this farm
+        let next_numero: i32 = conn.query_row(
+            "SELECT COALESCE(MAX(numero_bande), 0) + 1 FROM bandes WHERE ferme_id = ?1",
+            [bande.ferme_id],
+            |row| row.get(0),
+        )?;
+
         // Insertion de la bande
         conn.execute(
-            "INSERT INTO bandes (date_entree, ferme_id, notes) VALUES (?1, ?2, ?3)",
+            "INSERT INTO bandes (numero_bande, date_entree, ferme_id, notes) VALUES (?1, ?2, ?3, ?4)",
             [
+                &next_numero.to_string(),
                 &bande.date_entree.to_string(),
                 &bande.ferme_id.to_string(),
                 &bande.notes.as_ref().unwrap_or(&String::new()),
@@ -41,6 +49,7 @@ impl BandeRepository {
 
         Ok(Bande {
             id: Some(id),
+            numero_bande: next_numero,
             date_entree: bande.date_entree.clone(),
             ferme_id: bande.ferme_id,
             notes: bande.notes.clone(),
@@ -52,7 +61,7 @@ impl BandeRepository {
         conn: &PooledConnection<SqliteConnectionManager>,
     ) -> Result<Vec<BandeWithDetails>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+            "SELECT b.id, b.numero_bande, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
              ORDER BY b.date_entree DESC"
@@ -61,16 +70,17 @@ impl BandeRepository {
         let bandes_result = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
         let mut bandes = Vec::new();
-        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+        for (id, numero_bande, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
             let date_entree = date_entree_str.parse().map_err(|_| {
                 AppError::business_logic("Format de date invalide dans la base de données")
             })?;
@@ -78,6 +88,7 @@ impl BandeRepository {
             let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
             bandes.push(BandeWithDetails {
                 id: Some(id),
+                numero_bande,
                 date_entree,
                 ferme_id,
                 ferme_nom,
@@ -96,7 +107,7 @@ impl BandeRepository {
         ferme_id: i64,
     ) -> Result<Vec<BandeWithDetails>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+            "SELECT b.id, b.numero_bande, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
              WHERE b.ferme_id = ?1
@@ -106,16 +117,17 @@ impl BandeRepository {
         let bandes_result = stmt.query_map([ferme_id], |row| {
             Ok((
                 row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
         let mut bandes = Vec::new();
-        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+        for (id, numero_bande, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
             let date_entree = date_entree_str.parse().map_err(|_| {
                 AppError::business_logic("Format de date invalide dans la base de données")
             })?;
@@ -123,6 +135,7 @@ impl BandeRepository {
             let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
             bandes.push(BandeWithDetails {
                 id: Some(id),
+                numero_bande,
                 date_entree,
                 ferme_id,
                 ferme_nom,
@@ -142,7 +155,7 @@ impl BandeRepository {
         limit: u32,
     ) -> Result<Vec<BandeWithDetails>, AppError> {
         let mut stmt = conn.prepare(
-            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+            "SELECT b.id, b.numero_bande, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
              WHERE b.ferme_id = ?1
@@ -153,16 +166,17 @@ impl BandeRepository {
         let bandes_result = stmt.query_map([ferme_id, limit as i64], |row| {
             Ok((
                 row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
         let mut bandes = Vec::new();
-        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+        for (id, numero_bande, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
             let date_entree = date_entree_str.parse().map_err(|_| {
                 AppError::business_logic("Format de date invalide dans la base de données")
             })?;
@@ -170,6 +184,7 @@ impl BandeRepository {
             let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
             bandes.push(BandeWithDetails {
                 id: Some(id),
+                numero_bande,
                 date_entree,
                 ferme_id,
                 ferme_nom,
@@ -226,7 +241,7 @@ impl BandeRepository {
         
         // Get paginated data with filters
         let select_query = format!(
-            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+            "SELECT b.id, b.numero_bande, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
              WHERE {}
@@ -245,16 +260,17 @@ impl BandeRepository {
         let bandes_result = stmt.query_map(&params_refs[..], |row| {
             Ok((
                 row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
         let mut bandes = Vec::new();
-        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+        for (id, numero_bande, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
             let date_entree = date_entree_str.parse().map_err(|_| {
                 AppError::business_logic("Format de date invalide dans la base de données")
             })?;
@@ -262,6 +278,7 @@ impl BandeRepository {
             let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
             bandes.push(BandeWithDetails {
                 id: Some(id),
+                numero_bande,
                 date_entree,
                 ferme_id,
                 ferme_nom,
@@ -330,7 +347,7 @@ impl BandeRepository {
         
         // Get paginated data with filters
         let select_query = format!(
-            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+            "SELECT b.id, b.numero_bande, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
              WHERE {}
@@ -349,16 +366,17 @@ impl BandeRepository {
         let bandes_result = stmt.query_map(&params_refs[..], |row| {
             Ok((
                 row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
 
         let mut bandes = Vec::new();
-        for (id, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
+        for (id, numero_bande, date_entree_str, ferme_id, ferme_nom, notes) in bandes_result {
             let date_entree = date_entree_str.parse().map_err(|_| {
                 AppError::business_logic("Format de date invalide dans la base de données")
             })?;
@@ -366,6 +384,7 @@ impl BandeRepository {
             let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
             bandes.push(BandeWithDetails {
                 id: Some(id),
+                numero_bande,
                 date_entree,
                 ferme_id,
                 ferme_nom,
@@ -397,22 +416,23 @@ impl BandeRepository {
         id: i64,
     ) -> Result<Option<BandeWithDetails>, AppError> {
         let result = conn.query_row(
-            "SELECT b.id, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
+            "SELECT b.id, b.numero_bande, b.date_entree, b.ferme_id, f.nom as ferme_nom, b.notes
              FROM bandes b
              JOIN fermes f ON b.ferme_id = f.id
              WHERE b.id = ?1",
             [id],
             |row| Ok((
                 row.get::<_, i64>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, i64>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, Option<String>>(4)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)?,
+                row.get::<_, String>(4)?,
+                row.get::<_, Option<String>>(5)?,
             )),
         );
 
         match result {
-            Ok((id, date_entree_str, ferme_id, ferme_nom, notes)) => {
+            Ok((id, numero_bande, date_entree_str, ferme_id, ferme_nom, notes)) => {
                 let date_entree = date_entree_str.parse().map_err(|_| {
                     AppError::business_logic("Format de date invalide dans la base de données")
                 })?;
@@ -420,6 +440,7 @@ impl BandeRepository {
                 let alimentation_contour = AlimentationRepository::get_contour(conn, id)?;
                 Ok(Some(BandeWithDetails {
                     id: Some(id),
+                    numero_bande,
                     date_entree,
                     ferme_id,
                     ferme_nom,
@@ -455,8 +476,9 @@ impl BandeRepository {
 
         // Mise à jour de la bande
         let rows_affected = conn.execute(
-            "UPDATE bandes SET date_entree = ?1, ferme_id = ?2, notes = ?3 WHERE id = ?4",
+            "UPDATE bandes SET numero_bande = ?1, date_entree = ?2, ferme_id = ?3, notes = ?4 WHERE id = ?5",
             [
+                &bande.numero_bande.to_string(),
                 &bande.date_entree.to_string(),
                 &bande.ferme_id.to_string(),
                 &bande.notes.as_ref().unwrap_or(&String::new()),

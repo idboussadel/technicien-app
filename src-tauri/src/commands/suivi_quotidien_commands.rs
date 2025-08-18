@@ -154,7 +154,7 @@ pub async fn upsert_suivi_quotidien_field(
     // D'abord, vérifier que la semaine existe et récupérer la bande_id
     let conn = db.get_connection().map_err(|e| e.to_string())?;
     
-    let (semaine_exists, bande_id): (i64, i64) = conn.query_row(
+    let (semaine_exists, _): (i64, i64) = conn.query_row(
         "SELECT COUNT(*), COALESCE(MAX(s.batiment_id), 0) as batiment_id
          FROM semaines s 
          WHERE s.id = ?1",

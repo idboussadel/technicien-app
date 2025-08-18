@@ -111,11 +111,13 @@ impl DatabaseManager {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS bandes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                numero_bande INTEGER NOT NULL,
                 date_entree DATE NOT NULL,
                 ferme_id INTEGER NOT NULL,
                 notes TEXT,
                 alimentation_contour REAL NOT NULL DEFAULT 0.0,
-                FOREIGN KEY (ferme_id) REFERENCES fermes(id) ON DELETE RESTRICT
+                FOREIGN KEY (ferme_id) REFERENCES fermes(id) ON DELETE RESTRICT,
+                UNIQUE(ferme_id, numero_bande)
             )",
             [],
         )?;
@@ -227,12 +229,6 @@ impl DatabaseManager {
         // Index pour les recherches d'utilisateurs par nom d'utilisateur
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
-            [],
-        )?;
-
-        // Index pour les recherches d'utilisateurs par email
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)",
             [],
         )?;
 

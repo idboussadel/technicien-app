@@ -304,12 +304,12 @@ export default function Bandes({
                     <div className="flex items-center gap-4">
                       <div className="flex-shrink-0">
                         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-semibold text-base">
-                          {bande.id}
+                          {bande.numero_bande}
                         </span>
                       </div>
                       <div className="flex flex-col">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-                          Bande #{bande.id}
+                          Bande #{bande.numero_bande}
                         </h3>
                         <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
                           <div className="flex items-center gap-1">

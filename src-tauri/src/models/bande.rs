@@ -9,6 +9,7 @@ use crate::models::BatimentWithDetails;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bande {
     pub id: Option<i64>,
+    pub numero_bande: i32,
     pub date_entree: NaiveDate,
     pub ferme_id: i64,
     pub notes: Option<String>,
@@ -32,6 +33,7 @@ pub struct CreateBande {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateBande {
     pub id: i64,
+    pub numero_bande: i32,
     pub date_entree: NaiveDate,
     pub ferme_id: i64,
     pub notes: Option<String>,
@@ -44,6 +46,7 @@ pub struct UpdateBande {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BandeWithDetails {
     pub id: Option<i64>,
+    pub numero_bande: i32,
     pub date_entree: NaiveDate,
     pub ferme_id: i64,
     pub ferme_nom: String,

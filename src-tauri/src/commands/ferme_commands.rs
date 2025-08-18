@@ -1,6 +1,7 @@
 use crate::database::DatabaseManager;
 use crate::models::{Ferme, CreateFerme, UpdateFerme};
-use crate::services::{FermeService, FermeStatistics};
+use crate::services::{FermeService, FermeStatistics, FermeDetailedStatistics};
+use crate::repositories::GlobalStatistics;
 use std::sync::Arc;
 use tauri::State;
 
@@ -117,4 +118,36 @@ pub async fn get_ferme_statistics(
 ) -> Result<FermeStatistics, String> {
     let service = FermeService::new(db.inner().clone());
     service.get_ferme_statistics().await.map_err(|e| e.to_string())
+}
+
+/// Obtient les statistiques détaillées d'une ferme spécifique
+/// 
+/// # Arguments
+/// * `ferme_id` - L'ID de la ferme pour laquelle récupérer les statistiques
+/// * `db` - Le gestionnaire de base de données (injecté par Tauri)
+/// 
+/// # Returns
+/// Les statistiques détaillées de la ferme ou une erreur
+#[tauri::command]
+pub async fn get_ferme_detailed_statistics(
+    ferme_id: i64,
+    db: State<'_, Arc<DatabaseManager>>,
+) -> Result<FermeDetailedStatistics, String> {
+    let service = FermeService::new(db.inner().clone());
+    service.get_ferme_detailed_statistics(ferme_id).await.map_err(|e| e.to_string())
+}
+
+/// Obtient les statistiques globales de toutes les fermes
+/// 
+/// # Arguments
+/// * `db` - Le gestionnaire de base de données (injecté par Tauri)
+/// 
+/// # Returns
+/// Les statistiques globales du système ou une erreur
+#[tauri::command]
+pub async fn get_global_statistics(
+    db: State<'_, Arc<DatabaseManager>>,
+) -> Result<GlobalStatistics, String> {
+    let service = FermeService::new(db.inner().clone());
+    service.get_global_statistics().await.map_err(|e| e.to_string())
 }

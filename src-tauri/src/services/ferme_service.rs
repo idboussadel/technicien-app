@@ -1,7 +1,7 @@
 use crate::database::DatabaseManager;
 use crate::error::{AppError, AppResult};
 use crate::models::{Ferme, CreateFerme, UpdateFerme};
-use crate::repositories::{FermeRepository, FermeRepositoryTrait};
+use crate::repositories::{FermeRepository, FermeRepositoryTrait, GlobalStatistics, BandeDeathData};
 use std::sync::Arc;
 
 /// Service pour la gestion des fermes
@@ -143,6 +143,72 @@ impl FermeService {
             average_bandes_per_ferme: 0.0, // Placeholder
         })
     }
+
+    /// Obtient des statistiques détaillées pour une ferme spécifique
+    /// 
+    /// # Arguments
+    /// * `ferme_id` - L'ID de la ferme
+    /// 
+    /// # Returns
+    /// Un objet contenant les statistiques détaillées de la ferme
+    pub async fn get_ferme_detailed_statistics(&self, ferme_id: i64) -> AppResult<FermeDetailedStatistics> {
+        if ferme_id <= 0 {
+            return Err(AppError::validation_error(
+                "ferme_id",
+                "L'ID de la ferme doit être un nombre positif"
+            ));
+        }
+
+        // Vérifier que la ferme existe
+        let ferme = self.repository.get_by_id(ferme_id).await?;
+        
+        // Récupérer les bandes de cette ferme
+        let bandes = self.repository.get_bandes_by_ferme(ferme_id).await?;
+        
+        // Récupérer les vraies données de décès depuis la base de données
+        let bande_deaths_data = if !bandes.is_empty() {
+            // Récupérer les décès réels par bande depuis la base de données
+            let mut deaths_data = Vec::new();
+            
+            for bande in &bandes {
+                let bande_nom = format!("Bande #{}", bande.numero_bande);
+                
+                // Récupérer le total des décès pour cette bande depuis suivi_quotidien
+                let total_deaths = self.repository.get_deaths_for_bande(bande.id.unwrap()).await?;
+                
+                deaths_data.push(BandeDeathData {
+                    bande_nom,
+                    entry_date: bande.date_entree.to_string(),
+                    total_deaths,
+                });
+            }
+            
+            deaths_data
+        } else {
+            vec![]
+        };
+        
+        let total_deaths: i32 = bande_deaths_data.iter().map(|b| b.total_deaths).sum();
+        let bandes_with_deaths = bande_deaths_data.iter().filter(|b| b.total_deaths > 0).count() as i32;
+        
+        // Récupérer l'activité récente depuis la base de données
+        Ok(FermeDetailedStatistics {
+            ferme_id: ferme_id,
+            ferme_nom: ferme.nom,
+            total_bandes: bandes.len() as i32,
+            bandes_with_deaths,
+            total_deaths,
+            bande_deaths_data,
+        })
+    }
+
+    /// Obtient les statistiques globales de toutes les fermes
+    /// 
+    /// # Returns
+    /// Un objet contenant les statistiques globales du système
+    pub async fn get_global_statistics(&self) -> AppResult<GlobalStatistics> {
+        self.repository.get_global_statistics().await
+    }
 }
 
 /// Statistiques des fermes
@@ -155,3 +221,21 @@ pub struct FermeStatistics {
     pub fermes_with_active_bandes: i32,
     pub average_bandes_per_ferme: f64,
 }
+
+/// Statistiques détaillées pour une ferme spécifique
+/// 
+/// Structure contenant les statistiques détaillées d'une ferme,
+/// y compris les décès par bande.
+#[derive(Debug, serde::Serialize)]
+pub struct FermeDetailedStatistics {
+    pub ferme_id: i64,
+    pub ferme_nom: String,
+    pub total_bandes: i32,
+    pub bandes_with_deaths: i32,
+    pub total_deaths: i32,
+    pub bande_deaths_data: Vec<BandeDeathData>,
+}
+
+
+
+

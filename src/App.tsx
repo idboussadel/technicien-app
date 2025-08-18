@@ -25,7 +25,11 @@ interface NavItem {
  */
 function AuthenticatedApp() {
   const [fermes, setFermes] = useState<Ferme[]>([]);
-  const [selectedFerme, setSelectedFerme] = useState<Ferme | null>(null);
+  const [selectedFerme, setSelectedFerme] = useState<Ferme | null>({
+    id: 0,
+    nom: "Toutes les fermes",
+    nbr_meuble: 0,
+  });
   const [latestBandes, setLatestBandes] = useState<BandeWithDetails[]>([]);
   const [selectedBande, setSelectedBande] = useState<BandeWithDetails | null>(null);
   const [batiments, setBatiments] = useState<BatimentWithDetails[]>([]);
@@ -37,6 +41,23 @@ function AuthenticatedApp() {
   );
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Reset farm selection when navigating away from dashboard
+  useEffect(() => {
+    if (location.pathname !== "/" && selectedFerme && selectedFerme.id === 0) {
+      // If we're not on dashboard and "Toutes les fermes" is selected, reset to no selection
+      setSelectedFerme(null);
+      setCurrentView("ferme");
+      setLatestBandes([]);
+      setSelectedBande(null);
+      setSelectedBatiment(null);
+      setBatiments([]);
+    } else if (location.pathname === "/" && !selectedFerme) {
+      // If we're on dashboard and no farm is selected, default to "Toutes les fermes"
+      setSelectedFerme({ id: 0, nom: "Toutes les fermes", nbr_meuble: 0 });
+      setCurrentView("ferme");
+    }
+  }, [location.pathname, selectedFerme]);
 
   const navItems: NavItem[] = [
     { id: "dashboard", label: "Dashboard", path: "/" },
@@ -93,16 +114,23 @@ function AuthenticatedApp() {
   const handleFermeChange = (ferme: Ferme) => {
     setSelectedFerme(ferme);
 
-    // Charger les dernières bandes pour le sélecteur
-    loadLatestBandes(ferme.id);
+    // Si c'est "Toutes les fermes", ne pas charger les bandes
+    if (ferme.id > 0) {
+      // Charger les dernières bandes pour le sélecteur
+      loadLatestBandes(ferme.id);
+      // Passer au niveau bandes
+      setCurrentView("bande");
+    } else {
+      // Pour "Toutes les fermes", rester au niveau ferme
+      setCurrentView("ferme");
+      // Vider les bandes
+      setLatestBandes([]);
+    }
 
     // Réinitialiser la bande et le bâtiment sélectionnés
     setSelectedBande(null);
     setSelectedBatiment(null);
     setBatiments([]);
-
-    // Passer au niveau bandes
-    setCurrentView("bande");
   };
 
   const handleNewFerme = () => {
@@ -179,8 +207,8 @@ function AuthenticatedApp() {
             loadLatestBandes(selectedFerme.id);
           }
         }}
-        showBreadcrumb={location.pathname.startsWith("/fermes")}
-        breadcrumbLevel={currentView}
+        showBreadcrumb={location.pathname.startsWith("/fermes") || location.pathname === "/"}
+        breadcrumbLevel={location.pathname === "/" ? "ferme" : currentView}
         navItems={navItems}
         searchValue={searchValue}
         onSearchChange={handleSearchChange}
@@ -189,7 +217,7 @@ function AuthenticatedApp() {
 
       <main className="mt-[100px] h-[calc(100vh-102px)] overflow-auto">
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Dashboard selectedFerme={selectedFerme} fermes={fermes} />} />
           <Route
             path="/fermes"
             element={

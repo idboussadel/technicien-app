@@ -120,6 +120,21 @@ export default function Header({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="min-w-56">
+                {/* Option pour toutes les fermes - seulement sur le dashboard */}
+                {location.pathname === "/" && (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      onFermeChange({ id: 0, nom: "Toutes les fermes", nbr_meuble: 0 })
+                    }
+                    className="cursor-pointer flex items-center justify-between p-2"
+                  >
+                    <p className="font-medium text-foreground">Toutes les fermes</p>
+                    {(!selectedFerme || selectedFerme.id === 0) && (
+                      <Check className="w-3 h-3 text-muted-foreground" />
+                    )}
+                  </DropdownMenuItem>
+                )}
+                {/* Fermes individuelles */}
                 {fermes.map((ferme) => (
                   <DropdownMenuItem
                     key={ferme.id}

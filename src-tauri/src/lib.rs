@@ -57,6 +57,8 @@ pub fn run() {
             commands::delete_ferme,
             commands::search_fermes,
             commands::get_ferme_statistics,
+            commands::get_ferme_detailed_statistics,
+            commands::get_global_statistics,
             // Personnel commands
             commands::create_personnel,
             commands::get_all_personnel,
@@ -89,7 +91,6 @@ pub fn run() {
             commands::get_available_batiment_numbers,
             commands::add_maladie_to_batiment,
             commands::add_maladie_to_bande_batiments,
-            commands::get_maladies_by_batiment,
             // Alimentation commands
             commands::create_alimentation_history,
             commands::get_alimentation_history_by_bande,

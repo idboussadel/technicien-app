@@ -674,6 +674,18 @@ export default function SemainesView({
   };
 
   /**
+   * Formate un nombre selon les règles spécifiées :
+   * - Sans décimales si la valeur est un entier (ex. 15.0 → 15)
+   * - Avec une seule décimale si la valeur contient un chiffre après la virgule (ex. 15.2 → 15.2)
+   */
+  const formatNumber = (value: number): string => {
+    if (Number.isInteger(value)) {
+      return value.toString();
+    }
+    return value.toFixed(1);
+  };
+
+  /**
    * Calcule l'alimentation totale pour tous les suivis quotidiens
    */
   const calculateTotalAlimentation = (): number => {
@@ -1026,10 +1038,10 @@ export default function SemainesView({
     const resultsData = [
       [
         totalAlimentation > 0
-          ? `${totalAlimentation.toFixed(2)} kg (${totalAlimentation / 50} sacs)`
+          ? `${formatNumber(totalAlimentation)} kg (${formatNumber(totalAlimentation / 50)} sacs)`
           : "-",
         finalWeight !== null ? `${finalWeight} kg` : "-",
-        conversionFactor !== null ? conversionFactor.toFixed(3) : "-",
+        conversionFactor !== null ? formatNumber(conversionFactor) : "-",
         totalDeaths > 0 ? totalDeaths.toString() : "-",
         deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-",
         bande.notes || "-",
@@ -1495,10 +1507,10 @@ export default function SemainesView({
     const resultsData = [
       [
         totalAlimentation > 0
-          ? `${totalAlimentation.toFixed(2)} kg (${totalAlimentation / 50} sacs)`
+          ? `${formatNumber(totalAlimentation)} kg (${formatNumber(totalAlimentation / 50)} sacs)`
           : "-",
         finalWeight !== null ? `${finalWeight} kg` : "-",
-        conversionFactor !== null ? conversionFactor.toFixed(3) : "-",
+        conversionFactor !== null ? formatNumber(conversionFactor) : "-",
         totalDeaths > 0 ? totalDeaths.toString() : "-",
         deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-",
         bande.notes || "-",
@@ -1912,10 +1924,18 @@ export default function SemainesView({
             // For body cells, check if content contains Arabic text and set appropriate font
             if (section === "body") {
               const cellText = data.cell.text.join(" ");
-              // If cell contains Arabic characters, use Arabic font
-              if (/[\u0600-\u06FF]/.test(cellText)) {
+
+              // Priority: If cell contains parentheses, numbers, or Latin text, use Latin font
+              // This ensures "300.00 kg ( 6 sacs )" displays correctly
+              if (/[()0-9a-zA-Z]/.test(cellText)) {
+                data.cell.styles.font = "Rubik-VariableFont_wght";
+              }
+              // If cell contains Arabic characters and no Latin content, use Arabic font
+              else if (/[\u0600-\u06FF]/.test(cellText)) {
                 data.cell.styles.font = "HONORSansArabicUI-R";
-              } else {
+              }
+              // Default to Latin font for safety
+              else {
                 data.cell.styles.font = "Rubik-VariableFont_wght";
               }
             }
@@ -2036,10 +2056,10 @@ export default function SemainesView({
     const resultsData = [
       [
         totalAlimentation > 0
-          ? `${totalAlimentation.toFixed(2)} kg (${totalAlimentation / 50} أكياس)`
+          ? `${formatNumber(totalAlimentation)} kg (${formatNumber(totalAlimentation / 50)} sacs)`
           : "-",
         finalWeight !== null ? `${finalWeight} kg` : "-",
-        conversionFactor !== null ? conversionFactor.toFixed(3) : "-",
+        conversionFactor !== null ? formatNumber(conversionFactor) : "-",
         totalDeaths > 0 ? totalDeaths.toString() : "-",
         deathPercentage > 0 ? `${deathPercentage.toFixed(2)}%` : "-",
         bande.notes || "-",
@@ -2068,8 +2088,6 @@ export default function SemainesView({
       ],
     ];
 
-    // Calculate position for results table to be consistent with RTL layout
-    const resultsTableWidth = pageWidth - 2 * margin;
     const resultsTableX = margin; // Keep it centered but could be adjusted if needed
 
     autoTable(doc, {
@@ -2113,10 +2131,18 @@ export default function SemainesView({
         // For body cells, check if content contains Arabic text
         if (section === "body") {
           const cellText = data.cell.text.join(" ");
-          // If cell contains Arabic characters, use Arabic font
-          if (/[\u0600-\u06FF]/.test(cellText)) {
+
+          // Priority: If cell contains parentheses, numbers, or Latin text, use Latin font
+          // This ensures "300.00 kg ( 6 أكياس )" displays correctly
+          if (/[()0-9a-zA-Z]/.test(cellText)) {
+            data.cell.styles.font = "Rubik-VariableFont_wght";
+          }
+          // If cell contains Arabic characters and no Latin content, use Arabic font
+          else if (/[\u0600-\u06FF]/.test(cellText)) {
             data.cell.styles.font = "HONORSansArabicUI-R";
-          } else {
+          }
+          // Default to Latin font for safety
+          else {
             data.cell.styles.font = "Rubik-VariableFont_wght";
           }
         }
@@ -2161,7 +2187,7 @@ export default function SemainesView({
               {/* PDF Generation Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger>
-                  <Button variant="outline">
+                  <Button>
                     <Download className="mr-2 h-4 w-4" />
                     Exporter PDF
                     <ChevronDown className="ml-2 h-4 w-4" />
@@ -2640,15 +2666,15 @@ export default function SemainesView({
           {/* Tableau des résultats */}
           <div className="mt-8">
             <div className="bg-white dark:bg-slate-800 border border-slate-400/50 overflow-hidden">
-              <div className="bg-yellow-100 dark:bg-slate-700 px-4 py-3 border-b border-slate-400/50">
-                <h2 className="font-semibold text-slate-800 dark:text-slate-200">
+              <div className="bg-slate-200 dark:bg-slate-700 px-4 py-3 border-b border-slate-400/50">
+                <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-center">
                   Tableau des Résultats
-                </h2>
+                </h3>
               </div>
 
               <Table>
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="bg-yellow-100">
                     <TableHead className="text-center text-slate-700 dark:text-slate-300 border-r border-b border-slate-400/50">
                       Alimentation Totale
                     </TableHead>
@@ -2678,7 +2704,9 @@ export default function SemainesView({
                           const totalAlimentation = calculateTotalAlimentation();
                           if (totalAlimentation > 0) {
                             const totalSachets = totalAlimentation / 50;
-                            return `${totalAlimentation.toFixed(2)} kg ( ${totalSachets} sacs )`;
+                            return `${formatNumber(totalAlimentation)} kg ( ${formatNumber(
+                              totalSachets
+                            )} sacs )`;
                           }
                           return "-";
                         })()}
@@ -2712,7 +2740,7 @@ export default function SemainesView({
                               <div className="flex items-center justify-center gap-3">
                                 <div className="flex flex-col items-center">
                                   <span className="text-sm font-mono text-gray-700 leading-none">
-                                    {totalAlimentation.toFixed(2)}
+                                    {formatNumber(totalAlimentation)}
                                   </span>
                                   <div className="w-12 border-t border-gray-400 my-0.5"></div>
                                   <span className="text-sm font-mono text-gray-700 leading-none">
@@ -2721,7 +2749,7 @@ export default function SemainesView({
                                 </div>
                                 <span className="text-gray-600 font-medium">=</span>
                                 <span className="text-sm font-semibold text-gray-800">
-                                  {conversionFactor.toFixed(3)}
+                                  {formatNumber(conversionFactor)}
                                 </span>
                               </div>
                             );

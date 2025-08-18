@@ -15,6 +15,7 @@ export interface Personnel {
 // Bande interfaces for the new structure
 export interface Bande {
   id: number | null;
+  numero_bande: number;
   date_entree: string;
   ferme_id: number;
   notes: string | null;
@@ -28,6 +29,7 @@ export interface CreateBande {
 
 export interface UpdateBande {
   id: number;
+  numero_bande: number;
   date_entree: string;
   ferme_id: number;
   notes: string | null;
@@ -73,6 +75,7 @@ export interface BatimentWithDetails {
 
 export interface BandeWithDetails {
   id: number | null;
+  numero_bande: number;
   date_entree: string;
   ferme_id: number;
   ferme_nom: string;

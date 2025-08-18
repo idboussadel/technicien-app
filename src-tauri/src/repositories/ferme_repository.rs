@@ -1,7 +1,45 @@
 use crate::database::DatabaseManager;
 use crate::error::{AppError, AppResult};
-use crate::models::{Ferme, CreateFerme, UpdateFerme};
+use crate::models::{Ferme, CreateFerme, UpdateFerme, Bande};
 use std::sync::Arc;
+use chrono::{Utc, Datelike};
+
+/// Statistiques globales du système
+#[derive(Debug, serde::Serialize)]
+pub struct GlobalStatistics {
+    pub total_fermes: i32,
+    pub total_bandes: i32,
+    pub bandes_par_ferme: Vec<BandeParFerme>,
+}
+
+/// Statistiques des bandes par ferme
+#[derive(Debug, serde::Serialize)]
+pub struct BandeParFerme {
+    pub ferme_nom: String,
+    pub total_bandes: i32,
+    pub latest_bande_info: Option<LatestBandeInfo>,
+}
+
+/// Informations sur la dernière bande d'une ferme
+#[derive(Debug, serde::Serialize)]
+pub struct LatestBandeInfo {
+    pub bande_id: i64,
+    pub numero_bande: i32,
+    pub date_entree: String,
+    pub alimentation_contour: Option<f64>,
+}
+
+
+
+/// Données de décès pour une bande spécifique
+#[derive(Debug, serde::Serialize)]
+pub struct BandeDeathData {
+    pub bande_nom: String,
+    pub entry_date: String,
+    pub total_deaths: i32,
+}
+
+
 
 /// Trait pour les opérations sur les fermes
 /// 
@@ -58,6 +96,32 @@ pub trait FermeRepositoryTrait: Send + Sync {
     /// # Returns
     /// Une liste des fermes correspondant à la recherche
     async fn search_by_name(&self, nom: &str) -> AppResult<Vec<Ferme>>;
+
+    /// Récupère toutes les bandes d'une ferme
+    /// 
+    /// # Arguments
+    /// * `ferme_id` - L'ID de la ferme
+    /// 
+    /// # Returns
+    /// Une liste des bandes de la ferme
+    async fn get_bandes_by_ferme(&self, ferme_id: i64) -> AppResult<Vec<Bande>>;
+
+    /// Récupère les statistiques globales de toutes les fermes
+    /// 
+    /// # Returns
+    /// Les statistiques globales du système
+    async fn get_global_statistics(&self) -> AppResult<GlobalStatistics>;
+
+    /// Récupère le total des décès pour une bande spécifique
+    /// 
+    /// # Arguments
+    /// * `bande_id` - L'ID de la bande
+    /// 
+    /// # Returns
+    /// Le total des décès pour cette bande
+    async fn get_deaths_for_bande(&self, bande_id: i64) -> AppResult<i32>;
+
+
 }
 
 /// Implémentation du repository pour les fermes
@@ -263,4 +327,133 @@ impl FermeRepositoryTrait for FermeRepository {
 
         Ok(fermes)
     }
+
+    async fn get_bandes_by_ferme(&self, ferme_id: i64) -> AppResult<Vec<Bande>> {
+        let conn = self.db.get_connection()?;
+        
+        let mut stmt = conn.prepare(
+            "SELECT id, numero_bande, date_entree, ferme_id, notes FROM bandes WHERE ferme_id = ?1 ORDER BY date_entree"
+        )?;
+        
+        let bandes = stmt.query_map([ferme_id], |row| {
+            Ok(Bande {
+                id: Some(row.get(0)?),
+                numero_bande: row.get(1)?,
+                date_entree: row.get(2)?,
+                ferme_id: row.get(3)?,
+                notes: row.get(4)?,
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(bandes)
+    }
+
+    async fn get_global_statistics(&self) -> AppResult<GlobalStatistics> {
+        let conn = self.db.get_connection()?;
+        
+        // Récupérer le nombre total de fermes
+        let total_fermes: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM fermes",
+            [],
+            |row| row.get(0),
+        )?;
+
+        // Récupérer le nombre total de bandes de l'année en cours
+        let current_year = Utc::now().year_ce().1;
+        let total_bandes: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM bandes WHERE strftime('%Y', date_entree) = ?1",
+            [&current_year.to_string()],
+            |row| row.get(0),
+        )?;
+
+
+
+        // Récupérer toutes les fermes avec info sur la dernière bande (toutes années confondues)
+        let mut stmt = conn.prepare(
+            "SELECT 
+                f.nom, 
+                f.id as ferme_id
+             FROM fermes f 
+             ORDER BY f.nom ASC"
+        )?;
+        
+        let mut bandes_par_ferme = Vec::new();
+        
+        for row in stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+            ))
+        })? {
+            let (ferme_nom, ferme_id) = row?;
+            
+            // Récupérer les informations sur la dernière bande de cette ferme (toutes années confondues)
+            let latest_bande_info = {
+                let mut latest_bande_stmt = conn.prepare(
+                    "SELECT 
+                        b.id, b.numero_bande, b.date_entree,
+                        COALESCE(b.alimentation_contour, 0) as alimentation_contour
+                     FROM bandes b
+                     WHERE b.ferme_id = ?1
+                     ORDER BY b.date_entree DESC
+                     LIMIT 1"
+                )?;
+                
+                let latest_bande = latest_bande_stmt.query_row([&ferme_id], |row| {
+                    Ok(LatestBandeInfo {
+                        bande_id: row.get(0)?,
+                        numero_bande: row.get(1)?,
+                        date_entree: row.get(2)?,
+                        alimentation_contour: Some(row.get(3)?),
+                    })
+                });
+                
+
+                
+                latest_bande.ok()
+            };
+            
+            // Compter les bandes de l'année en cours pour l'affichage du graphique
+            let total_bandes_current_year: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM bandes WHERE ferme_id = ?1 AND CAST(strftime('%Y', date_entree) AS INTEGER) = ?2",
+                [&ferme_id, &(current_year as i64)],
+                |row| row.get(0),
+            ).unwrap_or(0);
+            
+            bandes_par_ferme.push(BandeParFerme {
+                ferme_nom,
+                total_bandes: total_bandes_current_year as i32,
+                latest_bande_info,
+            });
+        }
+
+
+
+        Ok(GlobalStatistics {
+            total_fermes: total_fermes as i32,
+            total_bandes: total_bandes as i32,
+            bandes_par_ferme,
+        })
+    }
+
+    /// Récupère le total des décès pour une bande spécifique
+    async fn get_deaths_for_bande(&self, bande_id: i64) -> AppResult<i32> {
+        let conn = self.db.get_connection()?;
+        
+        // Récupérer le total des décès depuis suivi_quotidien via les bâtiments de cette bande
+        let total_deaths: i64 = conn.query_row(
+            "SELECT COALESCE(SUM(sq.deces_par_jour), 0) 
+             FROM suivi_quotidien sq
+             JOIN semaines s ON sq.semaine_id = s.id
+             JOIN batiments b ON s.batiment_id = b.id
+             WHERE b.bande_id = ?1",
+            [bande_id],
+            |row| row.get(0),
+        )?;
+
+        Ok(total_deaths as i32)
+    }
+
+
 }
