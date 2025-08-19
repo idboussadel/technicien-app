@@ -1,6 +1,6 @@
 [package]
 name = "geema"
-version = "1.0.4"
+version = "1.0.5"
 description = "A Tauri App"
 authors = ["A.idboussadel"]
 edition = "2024"
@@ -13,6 +13,14 @@ edition = "2024"
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "tauri_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = false
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
