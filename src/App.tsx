@@ -11,6 +11,7 @@ import Poussins from "./pages/poussins/Poussins";
 import Medicaments from "./pages/medicaments/Medicaments";
 import Maladies from "./pages/maladies/Maladies";
 import ProfilePage from "./pages/profile/ProfilePage";
+import { AutoUpdateManager } from "./components/AutoUpdateManager";
 import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
 import "./App.css";
 
@@ -246,6 +247,9 @@ function AuthenticatedApp() {
           <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </main>
+
+      {/* Auto-update manager for handling updates */}
+      <AutoUpdateManager />
     </div>
   );
 }

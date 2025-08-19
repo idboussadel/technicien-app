@@ -14,6 +14,7 @@ pub mod maladie_commands;
 pub mod poussin_commands;
 pub mod semaine_commands;
 pub mod suivi_quotidien_commands;
+pub mod updater_commands;
 
 // Re-export all commands for easy access
 pub use ferme_commands::*;
@@ -27,3 +28,4 @@ pub use maladie_commands::*;
 pub use poussin_commands::*;
 pub use semaine_commands::*;
 pub use suivi_quotidien_commands::*;
+pub use updater_commands::*;
