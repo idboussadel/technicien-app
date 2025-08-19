@@ -3,6 +3,8 @@ use crate::error::{AppError, AppResult};
 use crate::models::{Ferme, CreateFerme, UpdateFerme, Bande};
 use std::sync::Arc;
 use chrono::{Utc, Datelike};
+use r2d2::PooledConnection;
+use r2d2_sqlite::SqliteConnectionManager;
 
 /// Statistiques globales du système
 #[derive(Debug, serde::Serialize)]
@@ -10,6 +12,7 @@ pub struct GlobalStatistics {
     pub total_fermes: i32,
     pub total_bandes: i32,
     pub bandes_par_ferme: Vec<BandeParFerme>,
+    pub maladies_par_ferme: Vec<FermeMaladieStats>,
 }
 
 /// Statistiques des bandes par ferme
@@ -29,6 +32,16 @@ pub struct LatestBandeInfo {
     pub alimentation_contour: Option<f64>,
 }
 
+/// Statistiques des maladies par ferme
+#[derive(Debug, serde::Serialize)]
+pub struct FermeMaladieStats {
+    pub ferme_nom: String,
+    pub maladie_nom: String,
+    pub total_bandes_affectees: i32,
+    pub total_bandes_ferme: i32,
+    pub pourcentage_affectees: f64,
+}
+
 
 
 /// Données de décès pour une bande spécifique
@@ -37,6 +50,70 @@ pub struct BandeDeathData {
     pub bande_nom: String,
     pub entry_date: String,
     pub total_deaths: i32,
+}
+
+/// Récupère les statistiques des maladies par ferme pour l'année en cours (version synchrone)
+/// 
+/// # Arguments
+/// * `conn` - La connexion à la base de données
+/// * `current_year` - L'année en cours
+/// 
+/// # Returns
+/// Les statistiques des maladies par ferme
+fn get_maladie_statistics_sync(
+    conn: &PooledConnection<SqliteConnectionManager>,
+    current_year: u32,
+) -> AppResult<Vec<FermeMaladieStats>> {
+    // Récupérer toutes les fermes avec leurs bandes de l'année en cours et leurs maladies
+    let mut stmt = conn.prepare(
+        "SELECT 
+            f.nom as ferme_nom,
+            m.nom as maladie_nom,
+            COUNT(DISTINCT b.id) as total_bandes_affectees,
+            (
+                SELECT COUNT(DISTINCT b2.id) 
+                FROM bandes b2 
+                WHERE b2.ferme_id = f.id 
+                AND CAST(strftime('%Y', b2.date_entree) AS INTEGER) = ?
+            ) as total_bandes_ferme
+         FROM fermes f
+         JOIN bandes b ON f.id = b.ferme_id
+         JOIN batiments bat ON b.id = bat.bande_id
+         JOIN batiment_maladies bm ON bat.id = bm.batiment_id
+         JOIN maladies m ON bm.maladie_id = m.id
+         WHERE CAST(strftime('%Y', b.date_entree) AS INTEGER) = ?
+         GROUP BY f.id, f.nom, m.id, m.nom
+         ORDER BY f.nom, total_bandes_affectees DESC"
+    )?;
+    
+    let mut maladies_par_ferme = Vec::new();
+    
+    for row in stmt.query_map([current_year as i64, current_year as i64], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, i64>(2)?,
+            row.get::<_, i64>(3)?,
+        ))
+    })? {
+        let (ferme_nom, maladie_nom, total_bandes_affectees, total_bandes_ferme) = row?;
+        
+        let pourcentage = if total_bandes_ferme > 0 {
+            (total_bandes_affectees as f64 / total_bandes_ferme as i64 as f64) * 100.0
+        } else {
+            0.0
+        };
+        
+        maladies_par_ferme.push(FermeMaladieStats {
+            ferme_nom,
+            maladie_nom,
+            total_bandes_affectees: total_bandes_affectees as i32,
+            total_bandes_ferme: total_bandes_ferme as i32,
+            pourcentage_affectees: pourcentage,
+        });
+    }
+    
+    Ok(maladies_par_ferme)
 }
 
 
@@ -120,6 +197,8 @@ pub trait FermeRepositoryTrait: Send + Sync {
     /// # Returns
     /// Le total des décès pour cette bande
     async fn get_deaths_for_bande(&self, bande_id: i64) -> AppResult<i32>;
+
+
 
 
 }
@@ -367,8 +446,6 @@ impl FermeRepositoryTrait for FermeRepository {
             |row| row.get(0),
         )?;
 
-
-
         // Récupérer toutes les fermes avec info sur la dernière bande (toutes années confondues)
         let mut stmt = conn.prepare(
             "SELECT 
@@ -409,8 +486,6 @@ impl FermeRepositoryTrait for FermeRepository {
                     })
                 });
                 
-
-                
                 latest_bande.ok()
             };
             
@@ -428,12 +503,14 @@ impl FermeRepositoryTrait for FermeRepository {
             });
         }
 
-
+        // Récupérer les statistiques des maladies par ferme
+        let maladies_par_ferme = get_maladie_statistics_sync(&conn, current_year)?;
 
         Ok(GlobalStatistics {
             total_fermes: total_fermes as i32,
             total_bandes: total_bandes as i32,
             bandes_par_ferme,
+            maladies_par_ferme,
         })
     }
 
@@ -454,6 +531,4 @@ impl FermeRepositoryTrait for FermeRepository {
 
         Ok(total_deaths as i32)
     }
-
-
 }

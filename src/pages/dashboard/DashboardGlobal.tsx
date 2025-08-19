@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Users, BarChart3, Package } from "lucide-react";
+import { Activity, Users, BarChart3, Package, AlertTriangle } from "lucide-react";
 import { XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Ferme } from "@/types";
@@ -14,6 +14,7 @@ interface GlobalStatistics {
   total_fermes: number;
   total_bandes: number;
   bandes_par_ferme: BandeParFerme[];
+  maladies_par_ferme: FermeMaladieStats[];
 }
 
 interface BandeParFerme {
@@ -25,6 +26,14 @@ interface BandeParFerme {
     date_entree: string;
     alimentation_contour?: number | null;
   };
+}
+
+interface FermeMaladieStats {
+  ferme_nom: string;
+  maladie_nom: string;
+  total_bandes_affectees: number;
+  total_bandes_ferme: number;
+  pourcentage_affectees: number;
 }
 
 /**
@@ -50,6 +59,7 @@ export default function DashboardGlobal({ fermes }: DashboardGlobalProps) {
         total_fermes: fermes.length,
         total_bandes: 0,
         bandes_par_ferme: [],
+        maladies_par_ferme: [],
       });
     } finally {
       setIsLoading(false);
@@ -175,82 +185,149 @@ export default function DashboardGlobal({ fermes }: DashboardGlobalProps) {
           </CardContent>
         </Card>
 
-        {/* Latest Bandes Status Card */}
-        <Card className="md:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-primary" />
-              Dernières Bandes
-            </CardTitle>
-            <CardDescription>Statut des dernières bandes par ferme</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-48">
-                <div className="text-muted-foreground">Chargement...</div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {(() => {
-                  // Filter farms that need attention (contour < 10000)
-                  const farmsNeedingAttention = fermes.filter((ferme) => {
-                    const fermeStats = globalStats?.bandes_par_ferme.find(
-                      (b) => b.ferme_nom === ferme.nom
-                    );
+        {/* Alimentation and Disease Statistics Column */}
+        <div className="md:col-span-1 space-y-4">
+          {/* Alimentation Card */}
+          <Card className="h-fit">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                Alimentation
+              </CardTitle>
+              <CardDescription>Statut de l'alimentation dernières bandes par ferme</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-muted-foreground">Chargement...</div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(() => {
+                    // Filter farms that need attention (contour < 10000)
+                    const farmsNeedingAttention = fermes.filter((ferme) => {
+                      const fermeStats = globalStats?.bandes_par_ferme.find(
+                        (b) => b.ferme_nom === ferme.nom
+                      );
 
-                    if (!fermeStats?.latest_bande_info) {
-                      return false;
+                      if (!fermeStats?.latest_bande_info) {
+                        return false;
+                      }
+
+                      const contour = fermeStats.latest_bande_info.alimentation_contour || 0;
+                      const needsAttention = contour < 10000;
+
+                      return needsAttention;
+                    });
+
+                    if (farmsNeedingAttention.length === 0) {
+                      return (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-muted-foreground">
+                            ✅ Toutes les fermes ont un bon niveau d'alimentation
+                          </p>
+                        </div>
+                      );
                     }
 
-                    const contour = fermeStats.latest_bande_info.alimentation_contour || 0;
-                    const needsAttention = contour < 10000;
+                    return farmsNeedingAttention.map((ferme) => {
+                      const fermeStats = globalStats?.bandes_par_ferme.find(
+                        (b) => b.ferme_nom === ferme.nom
+                      );
 
-                    return needsAttention;
-                  });
+                      const latestBande = fermeStats!.latest_bande_info!;
+                      const alimentationContour = latestBande.alimentation_contour || 0;
 
-                  if (farmsNeedingAttention.length === 0) {
-                    return (
-                      <div className="text-center py-6">
-                        <p className="text-sm text-muted-foreground">
-                          ✅ Toutes les fermes ont un bon niveau d'alimentation
-                        </p>
-                      </div>
-                    );
-                  }
+                      return (
+                        <div
+                          key={ferme.id}
+                          className="flex justify-between p-3 rounded-lg bg-red-50 border border-red-200"
+                        >
+                          <div>
+                            <div className="text-sm font-medium">{ferme.nom}</div>
+                            <div className="text-xs text-muted-foreground">
+                              Bande #{latestBande.numero_bande} - {latestBande.date_entree}
+                            </div>
+                          </div>
 
-                  return farmsNeedingAttention.map((ferme) => {
-                    const fermeStats = globalStats?.bandes_par_ferme.find(
-                      (b) => b.ferme_nom === ferme.nom
-                    );
+                          <div className="text-xs self-center font-medium mt-1 text-red-600">
+                            <span className="flex items-center gap-1">
+                              Alimentation: {alimentationContour.toLocaleString()} &lt; 10000
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                    const latestBande = fermeStats!.latest_bande_info!;
-                    const alimentationContour = latestBande.alimentation_contour || 0;
+          {/* Disease Statistics Card */}
+          <Card className="h-fit">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-orange-500" />
+                Problèmes de Maladies
+              </CardTitle>
+              <CardDescription>
+                Fermes avec des maladies récurrentes cette année (&gt;60%)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <div className="text-muted-foreground">Chargement...</div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(() => {
+                    // Filter diseases with occurrence rate > 60%
+                    const highRiskMaladies =
+                      globalStats?.maladies_par_ferme?.filter(
+                        (maladie) => maladie.pourcentage_affectees > 60
+                      ) || [];
 
-                    return (
+                    if (highRiskMaladies.length === 0) {
+                      return (
+                        <div className="text-center py-4">
+                          <p className="text-sm text-muted-foreground">
+                            ✅ Aucun problème de maladie à haut risque détecté
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return highRiskMaladies.map((maladie, index) => (
                       <div
-                        key={ferme.id}
+                        key={index}
                         className="flex justify-between p-3 rounded-lg bg-red-50 border border-red-200"
                       >
                         <div>
-                          <div className="text-sm font-medium">{ferme.nom}</div>
+                          <div className="text-sm font-medium">{maladie.ferme_nom}</div>
                           <div className="text-xs text-muted-foreground">
-                            Bande #{latestBande.numero_bande} - {latestBande.date_entree}
+                            Maladie: {maladie.maladie_nom}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {maladie.total_bandes_affectees} bande(s) sur{" "}
+                            {maladie.total_bandes_ferme}
                           </div>
                         </div>
 
                         <div className="text-xs self-center font-medium mt-1 text-red-600">
                           <span className="flex items-center gap-1">
-                            Alimentation: {alimentationContour.toLocaleString()} &lt; 10000
+                            {maladie.pourcentage_affectees.toFixed(1)}%
                           </span>
                         </div>
                       </div>
-                    );
-                  });
-                })()}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                    ));
+                  })()}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
