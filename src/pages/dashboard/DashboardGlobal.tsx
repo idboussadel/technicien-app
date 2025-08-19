@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Users, BarChart3, Package, AlertTriangle } from "lucide-react";
+import { BarChart3, Package, AlertTriangle } from "lucide-react";
 import { XAxis, YAxis, CartesianGrid, BarChart, Bar } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { Ferme } from "@/types";

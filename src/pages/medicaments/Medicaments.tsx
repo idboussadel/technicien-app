@@ -3,16 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import DataTable from "@/components/ui/data-table";
-import {
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  Package,
-  AlertTriangle,
-  Calendar,
-} from "lucide-react";
+import { Plus, Search, Edit, Trash2, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,

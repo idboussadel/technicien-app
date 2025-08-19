@@ -1193,7 +1193,7 @@ export default function SemainesView({
     }
 
     // Parcourir chaque paire de semaines
-    semainesPairs.forEach((semainesPair, pairIndex) => {
+    semainesPairs.forEach((semainesPair) => {
       // Vérifier si on a assez de place sur la page
       if (yPosition + 70 > pageHeight - margin) {
         doc.addPage();
@@ -1398,7 +1398,6 @@ export default function SemainesView({
             const col = data.column.index;
             const section = (data as any).section as "head" | "body" | "foot";
             const rowIndex = data.row.index;
-            const lastCol = data.table.columns.length - 1;
 
             // Handle header styling - weight column (col 10) gets special treatment
             if (section === "head") {
@@ -1690,7 +1689,7 @@ export default function SemainesView({
     }
 
     // Parcourir chaque paire de semaines
-    semainesPairs.forEach((semainesPair, pairIndex) => {
+    semainesPairs.forEach((semainesPair) => {
       if (yPosition + 70 > pageHeight - margin) {
         doc.addPage();
         yPosition = margin;
@@ -1701,7 +1700,7 @@ export default function SemainesView({
       const week2TableX = pageWidth - margin - 2 * tableWidth - 2; // Even weeks (2,4,6...) go to LEFT
 
       // RTL: Odd weeks (1,3,5...) go to RIGHT, Even weeks (2,4,6...) go to LEFT
-      semainesPair.forEach((semaine, tableIndex) => {
+      semainesPair.forEach((semaine) => {
         // Check if week number is odd or even to determine position
         const isOddWeek = semaine.numero_semaine % 2 === 1;
         const tableX = isOddWeek ? week1TableX : week2TableX;
@@ -2126,7 +2125,6 @@ export default function SemainesView({
       },
       didParseCell: (data) => {
         const section = (data as any).section as "head" | "body" | "foot";
-        const col = data.column.index;
 
         // For body cells, check if content contains Arabic text
         if (section === "body") {

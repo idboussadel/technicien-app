@@ -44,15 +44,12 @@ const personnelSchema = z.object({
     .trim(),
   telephone: z
     .string()
-    .optional()
-    .transform((val) => val?.trim() || "")
+    .min(0)
     .refine(
       (val) => !val || val.replace(/\D/g, "").length === 10,
       "Le numéro de téléphone doit contenir exactement 10 chiffres"
     ),
 });
-
-type PersonnelForm = z.infer<typeof personnelSchema>;
 
 const CreatePersonnelModal = ({
   open,
@@ -61,8 +58,8 @@ const CreatePersonnelModal = ({
 }: CreatePersonnelModalProps): JSX.Element => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form setup with validation
-  const form = useForm<PersonnelForm>({
+  // Form setup with validation - use the output type of the schema
+  const form = useForm<{ nom: string; telephone: string }>({
     resolver: zodResolver(personnelSchema),
     defaultValues: {
       nom: "",
@@ -73,7 +70,7 @@ const CreatePersonnelModal = ({
   /**
    * Handles form submission for creating personnel
    */
-  const onSubmit = async (data: PersonnelForm) => {
+  const onSubmit = async (data: { nom: string; telephone: string }) => {
     try {
       setIsSubmitting(true);
 

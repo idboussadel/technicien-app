@@ -54,7 +54,6 @@ export default function Bandes({
   onBackToFermes,
   selectedBatiment,
   onBatimentSelect,
-  onBackToBandes,
   onBackToBatiments,
   currentView,
   onRefreshBandes,

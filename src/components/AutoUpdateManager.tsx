@@ -8,16 +8,8 @@ import { useAutoUpdate } from "@/hooks/useAutoUpdate";
  * Shows update notifications and progress as needed
  */
 export const AutoUpdateManager: React.FC = () => {
-  const {
-    updateInfo,
-    isChecking,
-    isUpdating,
-    updateProgress,
-    error,
-    checkForUpdates,
-    installUpdate,
-    clearUpdateInfo,
-  } = useAutoUpdate();
+  const { updateInfo, isUpdating, updateProgress, error, installUpdate, clearUpdateInfo } =
+    useAutoUpdate();
 
   const [showNotification, setShowNotification] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
