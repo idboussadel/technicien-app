@@ -49,10 +49,16 @@ jobs:
           # Update package.json
           npm version $NEW_VERSION --no-git-tag-version
 
+          # Update Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
+
+          # Update tauri.conf.json
+          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" src-tauri/tauri.conf.json
+
           # Create and push tag
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json package-lock.json
+          git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
           git commit -m "Bump version to $NEW_VERSION [skip ci]"
           git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
           # Only push the tag, don't push the commit back to main
