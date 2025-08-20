@@ -5,24 +5,11 @@ use serde::{Deserialize, Serialize};
 /// Check if there's an update available
 #[tauri::command]
 pub async fn check_for_updates(app_handle: AppHandle) -> Result<UpdateInfo, String> {
-    println!("🔍 [DEBUG] Starting update check...");
-    
     let updater = app_handle.updater_builder().build()
-        .map_err(|e| {
-            println!("❌ [DEBUG] Failed to build updater: {}", e);
-            e.to_string()
-        })?;
-    
-    println!("✅ [DEBUG] Updater built successfully");
-    println!("🔍 [DEBUG] Checking for updates...");
+        .map_err(|e| e.to_string())?;
     
     match updater.check().await {
         Ok(Some(update)) => {
-            println!("✅ [DEBUG] Update found! Version: {}", update.version);
-            println!("📝 [DEBUG] Update body: {:?}", update.body);
-            println!("📅 [DEBUG] Update date: {:?}", update.date);
-            println!("🔍 [DEBUG] Update version type: {}", std::any::type_name_of_val(&update.version));
-            
             Ok(UpdateInfo {
                 available: true,
                 version: update.version,
@@ -31,7 +18,6 @@ pub async fn check_for_updates(app_handle: AppHandle) -> Result<UpdateInfo, Stri
             })
         }
         Ok(None) => {
-            println!("ℹ️ [DEBUG] No updates available");
             Ok(UpdateInfo {
                 available: false,
                 version: String::new(),
@@ -40,8 +26,6 @@ pub async fn check_for_updates(app_handle: AppHandle) -> Result<UpdateInfo, Stri
             })
         }
         Err(e) => {
-            println!("❌ [DEBUG] Error checking for updates: {}", e);
-            println!("🔍 [DEBUG] Full error details: {:?}", e);
             Err(format!("Erreur lors de la vérification des mises à jour: {}", e))
         }
     }

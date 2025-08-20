@@ -15,7 +15,6 @@ export interface UpdateProgress {
 
 export const useAutoUpdate = () => {
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateProgress, setUpdateProgress] = useState<UpdateProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,24 +24,17 @@ export const useAutoUpdate = () => {
    */
   const checkForUpdates = useCallback(async () => {
     try {
-      console.log("🔍 [DEBUG] Starting update check...");
-      setIsChecking(true);
       setError(null);
 
-      console.log("🔍 [DEBUG] Calling check_for_updates command...");
       const result = await invoke<UpdateInfo>("check_for_updates");
-      console.log("✅ [DEBUG] Update check result:", result);
 
       setUpdateInfo(result);
 
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
-      console.error("❌ [DEBUG] Error during update check:", err);
       setError(errorMessage);
       return null;
-    } finally {
-      setIsChecking(false);
     }
   }, []);
 
@@ -98,7 +90,6 @@ export const useAutoUpdate = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
       setError(errorMessage);
-      console.error("Erreur lors de l'installation de la mise à jour:", err);
     } finally {
       setIsUpdating(false);
     }
@@ -115,23 +106,19 @@ export const useAutoUpdate = () => {
 
   // Auto-check for updates on mount (only in production)
   useEffect(() => {
-    if (import.meta.env.PROD) {
-      // Wait a bit before checking to avoid blocking the app startup
-      const timer = setTimeout(() => {
-        checkForUpdates();
-      }, 5000);
+    // Wait a bit before checking to avoid blocking the app startup
+    const timer = setTimeout(() => {
+      checkForUpdates();
+    }, 5000);
 
-      return () => clearTimeout(timer);
-    }
+    return () => clearTimeout(timer);
   }, [checkForUpdates]);
 
   return {
     updateInfo,
-    isChecking,
     isUpdating,
     updateProgress,
     error,
-    checkForUpdates,
     installUpdate,
     clearUpdateInfo,
   };

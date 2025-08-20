@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Check, Search, User, LogOut, Slash, ChevronsUpDown, RefreshCw } from "lucide-react";
+import { Check, Search, User, LogOut, Slash, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -63,15 +63,10 @@ export default function Header({
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { user, logout } = useAuth();
-  const { checkForUpdates, isChecking } = useAutoUpdate();
+  const {} = useAutoUpdate();
 
   const handleSignOut = async () => {
     await logout();
-  };
-
-  const handleCheckUpdate = async () => {
-    console.log("🔍 [DEBUG] Manual update check triggered from header");
-    await checkForUpdates();
   };
 
   // Get user initials for avatar
@@ -314,18 +309,6 @@ export default function Header({
 
             {/* Right side: Search and User Menu */}
             <div className="flex items-center space-x-4">
-              {/* Debug Update Check Button */}
-              <Button
-                onClick={handleCheckUpdate}
-                disabled={isChecking}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`w-4 h-4 ${isChecking ? "animate-spin" : ""}`} />
-                {isChecking ? "Checking..." : "Check Update"}
-              </Button>
-
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />

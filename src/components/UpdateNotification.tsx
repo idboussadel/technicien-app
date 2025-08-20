@@ -1,120 +1,183 @@
-import React from "react";
+import { useEffect } from "react";
+import { Download, CheckCircle, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Calendar, Download, X } from "lucide-react";
-import { UpdateInfo } from "@/hooks/useAutoUpdate";
-
-interface UpdateNotificationProps {
-  updateInfo: UpdateInfo;
-  onInstall: () => void;
-  onDismiss: () => void;
-  isInstalling?: boolean;
-}
+import { Progress } from "@/components/ui/progress";
+import { useAutoUpdate } from "@/hooks/useAutoUpdate";
+import { toast } from "sonner";
 
 /**
- * Component that displays an update notification when a new version is available
+ * Composant de notification de mise à jour automatique
+ * Utilise des toasts shadcn pour afficher les notifications
  */
-export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
-  updateInfo,
-  onInstall,
-  onDismiss,
-  isInstalling = false,
-}) => {
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("fr-FR", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-    } catch {
-      return dateString;
-    }
-  };
+export function UpdateNotification() {
+  const { updateInfo, isUpdating, updateProgress, error, installUpdate, clearUpdateInfo } =
+    useAutoUpdate();
 
-  return (
-    <Card className="w-96 shadow-lg border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Download className="h-5 w-5 text-blue-600" />
-            <CardTitle className="text-lg text-blue-900">Nouvelle mise à jour disponible</CardTitle>
+  // Show update notification toast when update is available
+  useEffect(() => {
+    if (updateInfo?.available && !isUpdating) {
+      toast(
+        <div className="space-y-4">
+          {/* Header with icon and title */}
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
+              <Download className="w-4 h-4 text-slate-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-slate-900">Mise à jour disponible</h4>
+              <p className="text-sm text-slate-600">Une nouvelle version est disponible</p>
+            </div>
           </div>
+
+          {/* X button positioned at far top right */}
           <Button
+            onClick={handleDismiss}
             variant="ghost"
             size="sm"
-            onClick={onDismiss}
-            disabled={isInstalling}
-            className="h-8 w-8 p-0 hover:bg-blue-100"
+            className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-slate-100"
           >
-            <X className="h-4 w-4" />
+            <X className="w-4 h-4 text-slate-600" />
           </Button>
-        </div>
-        <CardDescription className="text-blue-700">
-          Une nouvelle version de l'application est disponible
-        </CardDescription>
-      </CardHeader>
 
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-            Version {updateInfo.version}
-          </Badge>
-          {updateInfo.date && (
-            <div className="flex items-center gap-1 text-sm text-blue-600">
-              <Calendar className="h-3 w-3" />
-              {formatDate(updateInfo.date)}
-            </div>
-          )}
-        </div>
-
-        {updateInfo.body && (
-          <div className="text-sm text-blue-800 bg-blue-100 p-3 rounded-md">
-            <p className="font-medium mb-1">Nouvelles fonctionnalités :</p>
-            <p className="text-blue-700 leading-relaxed">{updateInfo.body}</p>
+          {/* Action buttons */}
+          <div className="flex space-x-3">
+            <Button
+              onClick={handleInstall}
+              size="sm"
+              className="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-medium"
+            >
+              Mettre à jour
+            </Button>
+            <Button
+              onClick={handleDismiss}
+              variant="outline"
+              size="sm"
+              className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 font-medium"
+            >
+              Plus tard
+            </Button>
           </div>
-        )}
-      </CardContent>
+        </div>,
+        {
+          duration: Infinity,
+          position: "bottom-right",
+          className: "w-80",
+        }
+      );
+    }
+  }, [updateInfo?.available, updateInfo?.version]);
 
-      <CardFooter className="flex gap-2 pt-3">
-        <Button
-          onClick={onInstall}
-          disabled={isInstalling}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {isInstalling ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-              Installation...
-            </>
-          ) : (
-            <>
-              <Download className="h-4 w-4 mr-2" />
-              Installer maintenant
-            </>
-          )}
-        </Button>
+  // Show progress toast when updating
+  useEffect(() => {
+    if (isUpdating && updateProgress) {
+      toast(
+        <div className="space-y-4 !w-full !max-w-none !block">
+          {/* Header with icon, title, and X button */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center">
+                <Download className="w-4 h-4 text-slate-600 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-slate-900">Mise à jour en cours</h4>
+                <p className="text-sm text-slate-600">{updateProgress.status}</p>
+              </div>
+            </div>
+            <Button
+              onClick={handleDismiss}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 hover:bg-slate-100"
+            >
+              <X className="w-4 h-4 text-slate-600" />
+            </Button>
+          </div>
 
-        {!isInstalling && (
-          <Button
-            variant="outline"
-            onClick={onDismiss}
-            className="border-blue-200 text-blue-700 hover:bg-blue-50"
-          >
-            Plus tard
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
-  );
-};
+          {/* Progress section with custom progress bar */}
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">Progression</span>
+                <span className="font-medium text-slate-900">
+                  {Math.round(updateProgress.progress)}%
+                </span>
+              </div>
+              {/* Custom progress bar that truly spans full width */}
+              <div className="!w-full !min-w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="bg-slate-900 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${updateProgress.progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>,
+        {
+          id: "update-progress",
+          duration: Infinity,
+          position: "bottom-right",
+          className: "w-80 !block",
+        }
+      );
+    }
+  }, [isUpdating, updateProgress]);
+
+  // Show success toast when update is complete
+  useEffect(() => {
+    if (updateProgress?.progress === 100) {
+      toast.success(
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-slate-900">Mise à jour terminée</h4>
+            <p className="text-sm text-slate-600">L'application va redémarrer...</p>
+          </div>
+        </div>,
+        {
+          id: "update-success",
+          duration: 5000,
+          position: "bottom-right",
+          className: "w-80",
+        }
+      );
+    }
+  }, [updateProgress?.progress]);
+
+  // Show error toast when there's an error
+  useEffect(() => {
+    if (error) {
+      toast.error(
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+            <AlertCircle className="w-4 h-4 text-red-600" />
+          </div>
+          <div>
+            <h4 className="font-semibold text-slate-900">Erreur de mise à jour</h4>
+            <p className="text-sm text-slate-600">{error}</p>
+          </div>
+        </div>,
+        {
+          id: "update-error",
+          duration: 10000,
+          position: "bottom-right",
+          className: "w-80",
+        }
+      );
+    }
+  }, [error]);
+
+  const handleInstall = async () => {
+    await installUpdate();
+  };
+
+  const handleDismiss = () => {
+    clearUpdateInfo();
+    toast.dismiss();
+  };
+
+  // This component doesn't render anything visible
+  // It only manages toast notifications
+  return null;
+}
