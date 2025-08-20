@@ -49,9 +49,6 @@ jobs:
           # Update package.json
           npm version $NEW_VERSION --no-git-tag-version
 
-          # Update package-lock.json to match
-          npm install
-
           # Update Cargo.toml
           sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" src-tauri/Cargo.toml
 
