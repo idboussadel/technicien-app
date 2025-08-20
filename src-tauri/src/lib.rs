@@ -20,10 +20,8 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            #[cfg(desktop)]
-            app.handle().plugin(tauri_plugin_updater::Builder::new().build());
-            
             // Initialize database
             let app_dir = app.path().app_data_dir().expect("Failed to get app data directory");
             std::fs::create_dir_all(&app_dir).expect("Failed to create app data directory");

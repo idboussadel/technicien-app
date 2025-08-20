@@ -21,6 +21,7 @@ pub async fn check_for_updates(app_handle: AppHandle) -> Result<UpdateInfo, Stri
             println!("✅ [DEBUG] Update found! Version: {}", update.version);
             println!("📝 [DEBUG] Update body: {:?}", update.body);
             println!("📅 [DEBUG] Update date: {:?}", update.date);
+            println!("🔍 [DEBUG] Update version type: {}", std::any::type_name_of_val(&update.version));
             
             Ok(UpdateInfo {
                 available: true,
@@ -40,6 +41,7 @@ pub async fn check_for_updates(app_handle: AppHandle) -> Result<UpdateInfo, Stri
         }
         Err(e) => {
             println!("❌ [DEBUG] Error checking for updates: {}", e);
+            println!("🔍 [DEBUG] Full error details: {:?}", e);
             Err(format!("Erreur lors de la vérification des mises à jour: {}", e))
         }
     }
