@@ -25,17 +25,21 @@ export const useAutoUpdate = () => {
    */
   const checkForUpdates = useCallback(async () => {
     try {
+      console.log("🔍 [DEBUG] Starting update check...");
       setIsChecking(true);
       setError(null);
 
+      console.log("🔍 [DEBUG] Calling check_for_updates command...");
       const result = await invoke<UpdateInfo>("check_for_updates");
+      console.log("✅ [DEBUG] Update check result:", result);
+
       setUpdateInfo(result);
 
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+      console.error("❌ [DEBUG] Error during update check:", err);
       setError(errorMessage);
-      console.error("Erreur lors de la vérification des mises à jour:", err);
       return null;
     } finally {
       setIsChecking(false);
