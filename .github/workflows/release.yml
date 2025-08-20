@@ -105,7 +105,6 @@ jobs:
 
       - name: Check Tauri CLI version
         run: |
-          tauri --version
           cargo tauri --version
 
       - name: Build application
@@ -114,10 +113,7 @@ jobs:
           CARGO_TARGET_DIR: target
 
       - name: Build Tauri application
-        run: |
-          echo "=== Starting Tauri build ==="
-          npm run build:win-msi
-          echo "=== Tauri build completed ==="
+        run: cargo tauri build --target ${{ matrix.target }} --bundle msi
         env:
           CARGO_TARGET_DIR: target
           TAURI_PRIVATE_KEY: ${{ env.TAURI_PRIVATE_KEY }}
@@ -129,14 +125,6 @@ jobs:
           ls -la src-tauri/target/${{ matrix.target }}/release/bundle/
           echo "=== MSI files found ==="
           find src-tauri/target/${{ matrix.target }}/release/bundle/ -name "*.msi" -type f
-          echo "=== All files in bundle directory ==="
-          find src-tauri/target/${{ matrix.target }}/release/bundle/ -type f
-          echo "=== Bundle directory structure ==="
-          tree src-tauri/target/${{ matrix.target }}/release/bundle/ || echo "tree command not available"
-          echo "=== Checking for MSI files in other locations ==="
-          find src-tauri/target/ -name "*.msi" -type f
-          echo "=== Checking release directory ==="
-          ls -la src-tauri/target/${{ matrix.target }}/release/
 
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
@@ -157,6 +145,13 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}-msi-fallback
           path: src-tauri/target/**/*.msi
+          retention-days: 1
+
+      - name: Upload entire target directory for debugging
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}-target-debug
+          path: src-tauri/target/
           retention-days: 1
 
   release:
@@ -182,22 +177,12 @@ jobs:
           name: geema-windows-x64-bundle
           path: bundle-files
 
-      - name: Download fallback MSI artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: geema-windows-x64-msi-fallback
-          path: msi-fallback-files
-
       - name: List downloaded artifacts
         run: |
           echo "=== MSI files downloaded ==="
           find msi-files -type f
           echo "=== Bundle files downloaded ==="
           find bundle-files -type f
-          echo "=== Fallback MSI files downloaded ==="
-          find msi-fallback-files -type f
-          echo "=== All downloaded content ==="
-          ls -la msi-files/ bundle-files/ msi-fallback-files/
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -222,7 +207,6 @@ jobs:
           files: |
             msi-files/*.msi
             bundle-files/*.msi
-            msi-fallback-files/*.msi
           generate_release_notes: false
           draft: false
           prerelease: false
