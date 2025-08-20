@@ -48,7 +48,7 @@
     "updater": {
       "active": true,
       "endpoints": [
-        "https://github.com/idboussadel/technicien-app/releases/download/v1.0.4/latest.json"
+        "https://raw.githubusercontent.com/idboussadel/technicien-app/main/latest.json"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJDQTEzOTcyQjE5M0VENzUKUldSMTdaT3hjam1oTElDK2RZMFExNWUvVncxbUxhYWhDaTBueDBYVDhJWDkzSmhBN2xDc3Y0Q0wK"
