@@ -173,12 +173,28 @@ jobs:
           name: geema-windows-x64-bundle
           path: bundle-files
 
+      - name: Download fallback MSI artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: geema-windows-x64-msi-fallback
+          path: msi-fallback-files
+
+      - name: Download target debug artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: geema-windows-x64-target-debug
+          path: target-debug-files
+
       - name: List downloaded artifacts
         run: |
           echo "=== MSI files downloaded ==="
           find msi-files -type f
           echo "=== Bundle files downloaded ==="
           find bundle-files -type f
+          echo "=== Fallback MSI files downloaded ==="
+          find msi-fallback-files -type f
+          echo "=== Target debug files downloaded ==="
+          find target-debug-files -type f
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -203,6 +219,7 @@ jobs:
           files: |
             msi-files/*.msi
             bundle-files/*.msi
+            msi-fallback-files/*.msi
           generate_release_notes: false
           draft: false
           prerelease: false
