@@ -24,15 +24,19 @@ export const useAutoUpdate = () => {
    */
   const checkForUpdates = useCallback(async () => {
     try {
+      console.log("🔍 [DEBUG] Starting update check...");
       setError(null);
 
+      console.log("🔍 [DEBUG] Calling check_for_updates command...");
       const result = await invoke<UpdateInfo>("check_for_updates");
+      console.log("✅ [DEBUG] Update check result:", result);
 
       setUpdateInfo(result);
 
       return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+      console.error("❌ [DEBUG] Error during update check:", err);
       setError(errorMessage);
       return null;
     }
@@ -89,6 +93,7 @@ export const useAutoUpdate = () => {
       // The app will restart automatically after update
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
+      console.error("❌ [DEBUG] Error during update installation:", err);
       setError(errorMessage);
     } finally {
       setIsUpdating(false);
