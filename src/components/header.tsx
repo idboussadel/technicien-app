@@ -9,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
 import WindowControls from "@/components/ui/window-controls";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAutoUpdate } from "@/hooks/useAutoUpdate";

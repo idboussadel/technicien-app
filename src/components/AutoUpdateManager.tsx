@@ -61,12 +61,7 @@ export const AutoUpdateManager: React.FC = () => {
       {/* Update Notification */}
       {showNotification && updateInfo && (
         <div className="fixed top-4 right-4 z-50">
-          <UpdateNotification
-            updateInfo={updateInfo}
-            onInstall={handleInstall}
-            onDismiss={handleDismiss}
-            isInstalling={isUpdating}
-          />
+          <UpdateNotification />
         </div>
       )}
 

@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Download, CheckCircle, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { useAutoUpdate } from "@/hooks/useAutoUpdate";
 import { toast } from "sonner";
 
