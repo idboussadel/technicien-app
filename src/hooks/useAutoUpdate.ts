@@ -52,49 +52,61 @@ export const useAutoUpdate = () => {
     }
 
     try {
+      console.log("🚀 [DEBUG] Starting update installation...");
       setIsUpdating(true);
       setError(null);
 
       // Start progress tracking
       setUpdateProgress({
         status: "Démarrage de la mise à jour...",
-        progress: 0,
+        progress: 10,
       });
 
-      // Simulate progress updates (in a real app, you'd listen to actual progress events)
+      // Simulate progress updates with better status messages
       const progressInterval = setInterval(() => {
         setUpdateProgress((prev) => {
           if (!prev) return prev;
-          const newProgress = Math.min(prev.progress + Math.random() * 20, 90);
+          const newProgress = Math.min(prev.progress + Math.random() * 15, 85);
           return {
             ...prev,
             progress: newProgress,
             status:
               newProgress < 30
-                ? "Téléchargement..."
+                ? "Téléchargement de la mise à jour..."
                 : newProgress < 60
-                ? "Vérification..."
-                : newProgress < 90
-                ? "Installation..."
+                ? "Vérification de l'intégrité..."
+                : newProgress < 85
+                ? "Installation en cours..."
                 : "Finalisation...",
           };
         });
-      }, 500);
+      }, 800);
 
+      console.log("🔍 [DEBUG] Calling install_update command...");
+      
       // Install the update
       await invoke("install_update");
+      
+      console.log("✅ [DEBUG] install_update command completed successfully");
 
+      // Clear the progress interval and set to 100%
       clearInterval(progressInterval);
       setUpdateProgress({
         status: "Mise à jour terminée! Redémarrage...",
         progress: 100,
       });
 
+      console.log("🎉 [DEBUG] Update completed, app should restart automatically");
+
       // The app will restart automatically after update
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erreur inconnue";
       console.error("❌ [DEBUG] Error during update installation:", err);
+      console.error("❌ [DEBUG] Error details:", err);
       setError(errorMessage);
+      
+      // Clear progress on error
+      setUpdateProgress(null);
     } finally {
       setIsUpdating(false);
     }

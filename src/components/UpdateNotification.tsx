@@ -147,25 +147,34 @@ export function UpdateNotification() {
   // Show error toast when there's an error
   useEffect(() => {
     if (error) {
+      console.error("🚨 [FRONTEND] Displaying error toast:", error);
       toast.error(
-        <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-            <AlertCircle className="w-4 h-4 text-red-600" />
+        <div className="space-y-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-4 h-4 text-red-600" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-slate-900">Erreur de mise à jour</h4>
+              <p className="text-sm text-slate-600">{error}</p>
+            </div>
           </div>
-          <div>
-            <h4 className="font-semibold text-slate-900">Erreur de mise à jour</h4>
-            <p className="text-sm text-slate-600">{error}</p>
+          
+          {/* Debug info for developers */}
+          <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded border">
+            <p><strong>Debug:</strong> Vérifiez la console pour plus de détails</p>
+            <p><strong>Version actuelle:</strong> {updateInfo?.version || "Inconnue"}</p>
           </div>
         </div>,
         {
           id: "update-error",
-          duration: 10000,
+          duration: 15000,
           position: "bottom-right",
           className: "w-80",
         }
       );
     }
-  }, [error]);
+  }, [error, updateInfo?.version]);
 
   const handleInstall = async () => {
     await installUpdate();

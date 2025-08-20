@@ -34,21 +34,53 @@ pub async fn check_for_updates(app_handle: AppHandle) -> Result<UpdateInfo, Stri
 /// Download and install the update
 #[tauri::command]
 pub async fn install_update(app_handle: AppHandle) -> Result<(), String> {
+    println!("🚀 [RUST] Starting update installation...");
+    
     let updater = app_handle.updater_builder().build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            println!("❌ [RUST] Failed to build updater: {}", e);
+            format!("Erreur lors de la construction de l'updater: {}", e)
+        })?;
+    
+    println!("✅ [RUST] Updater built successfully");
     
     // First check for updates
+    println!("🔍 [RUST] Checking for available updates...");
     let update = updater.check().await
-        .map_err(|e| format!("Erreur lors de la vérification: {}", e))?
-        .ok_or("Aucune mise à jour disponible".to_string())?;
+        .map_err(|e| {
+            println!("❌ [RUST] Failed to check for updates: {}", e);
+            format!("Erreur lors de la vérification: {}", e)
+        })?
+        .ok_or_else(|| {
+            println!("❌ [RUST] No update available");
+            "Aucune mise à jour disponible".to_string()
+        })?;
+    
+    println!("✅ [RUST] Update found: version {}", update.version);
     
     // Download the update
+    println!("📥 [RUST] Starting download...");
+    println!("📥 [RUST] Update version: {}", update.version);
     update.download(|_, _| {}, || {}).await
-        .map_err(|e| format!("Erreur lors du téléchargement: {}", e))?;
+        .map_err(|e| {
+            println!("❌ [RUST] Failed to download update: {}", e);
+            println!("❌ [RUST] Error type: {:?}", std::any::type_name_of_val(&e));
+            println!("❌ [RUST] Full error details: {:#?}", e);
+            format!("Erreur lors du téléchargement: {}", e)
+        })?;
+    
+    println!("✅ [RUST] Download completed successfully");
     
     // Install the update
+    println!("🔧 [RUST] Starting installation...");
     update.install(&[])
-        .map_err(|e| format!("Erreur lors de l'installation: {}", e))?;
+        .map_err(|e| {
+            println!("❌ [RUST] Failed to install update: {}", e);
+            format!("Erreur lors de l'installation: {}", e)
+        })?;
+    
+    println!("✅ [RUST] Installation completed successfully");
+    println!("🎉 [RUST] Update process completed, app should restart automatically");
     
     Ok(())
 }
