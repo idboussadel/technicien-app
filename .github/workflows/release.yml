@@ -119,13 +119,6 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ env.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ env.TAURI_KEY_PASSWORD }}
 
-      - name: List build artifacts
-        run: |
-          echo "=== Build directory contents ==="
-          ls -la src-tauri/target/${{ matrix.target }}/release/bundle/
-          echo "=== MSI files found ==="
-          find src-tauri/target/${{ matrix.target }}/release/bundle/ -name "*.msi" -type f
-
       - name: Upload MSI artifact
         uses: actions/upload-artifact@v4
         with:
