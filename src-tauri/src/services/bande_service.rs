@@ -199,7 +199,7 @@ impl BandeService {
             ));
         }
 
-        let conn = self.db.get_connection()?;
+        let mut conn = self.db.get_connection()?;
         
         // Vérifier que la bande existe
         let bande = BandeRepository::get_by_id(&conn, id)?;
@@ -208,6 +208,6 @@ impl BandeService {
         }
 
         // La suppression cascade est gérée par les contraintes FK
-        BandeRepository::delete(&conn, id).map_err(AppError::from)
+        BandeRepository::delete(&mut conn, id).map_err(AppError::from)
     }
 }

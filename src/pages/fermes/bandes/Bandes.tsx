@@ -5,7 +5,6 @@ import {
   Plus,
   Building2,
   MoreHorizontal,
-  Edit,
   Trash2,
   ArrowLeft,
   CalendarDays,
@@ -18,6 +17,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { DatePickerWithRange } from "@/components/ui/date-picker-with-range";
@@ -81,6 +91,11 @@ export default function Bandes({
 
   // Date range filter state
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+  // Delete state
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [bandeToDelete, setBandeToDelete] = useState<BandeWithDetails | null>(null);
 
   /**
    * Charge les bandes d'une ferme spécifique avec pagination
@@ -214,6 +229,85 @@ export default function Bandes({
    */
   const handleBackToBandes = () => {
     setSelectedBande(null);
+    onBandeSelect?.(null as any);
+  };
+
+  /**
+   * Handle deleting a bande
+   */
+  const handleDeleteBande = async () => {
+    if (!bandeToDelete?.id) {
+      toast.error("ID de la bande invalide");
+      return;
+    }
+
+    if (deleteConfirmation !== "SUPPRIMER") {
+      toast.error("Veuillez taper 'SUPPRIMER' pour confirmer la suppression");
+      return;
+    }
+
+    setIsDeleting(bandeToDelete.id);
+
+    try {
+      await invoke("delete_bande", { id: bandeToDelete.id });
+
+      toast.success("Bande supprimée avec succès");
+
+      // Reset the delete state first
+      setDeleteConfirmation("");
+      setBandeToDelete(null);
+
+      // Small delay to ensure the database operation is complete
+      setTimeout(() => {
+        // Refresh the bandes list to reflect the changes
+        loadBandes(ferme.id, pagination.page, pagination.limit, dateRange);
+        onRefreshBandes?.();
+      }, 200);
+    } catch (error) {
+      console.error("Erreur lors de la suppression de la bande:", error);
+
+      // Check if the error indicates the bande doesn't exist
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("not found") || errorMessage.includes("n'existe pas")) {
+        toast.error("Cette bande n'existe plus. Actualisation des données...");
+        // Automatically refresh the data
+        setTimeout(() => {
+          loadBandes(ferme.id, pagination.page, pagination.limit, dateRange);
+          onRefreshBandes?.();
+        }, 1000);
+      } else {
+        toast.error("Erreur lors de la suppression de la bande");
+      }
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  /**
+   * Refresh the current bande data
+   */
+  const handleRefreshBande = async () => {
+    if (selectedBande) {
+      try {
+        // Reload the current bande with fresh data
+        const freshBande = await invoke<BandeWithDetails>("get_bande_by_id", {
+          id: selectedBande.id,
+        });
+        if (freshBande) {
+          setSelectedBande(freshBande);
+          // Also refresh the parent's bande list
+          onRefreshBandes?.();
+        }
+      } catch (error) {
+        console.error("Erreur lors du rafraîchissement de la bande:", error);
+        // If there's an error, refresh the entire bandes list
+        await loadBandes(ferme.id, pagination.page, pagination.limit, dateRange);
+        onRefreshBandes?.();
+      }
+    }
+
+    // Always refresh the local bandes list to ensure consistency
+    await loadBandes(ferme.id, pagination.page, pagination.limit, dateRange);
   };
 
   // Load bandes when component mounts or ferme changes
@@ -238,6 +332,10 @@ export default function Bandes({
         onBatimentSelect={onBatimentSelect}
         onBackToBatiments={onBackToBatiments}
         currentView={currentView}
+        onRefreshBande={handleRefreshBande}
+        personnel={personnel}
+        poussins={poussins}
+        availableBatiments={availableBatiments}
       />
     );
   }
@@ -333,7 +431,7 @@ export default function Bandes({
                       </div>
                     </div>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -351,21 +449,16 @@ export default function Bandes({
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.stopPropagation();
-                            // TODO: Handle edit
+                            if (bande?.id) {
+                              setBandeToDelete(bande);
+                              setDeleteConfirmation("");
+                            }
                           }}
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // TODO: Handle delete
-                          }}
-                          className="text-destructive focus:text-destructive"
+                          className="cursor-pointer text-destructive focus:text-destructive"
+                          disabled={isDeleting === bande?.id}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
+                          {isDeleting === bande.id ? "Suppression..." : "Supprimer"}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -406,6 +499,48 @@ export default function Bandes({
           )}
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!bandeToDelete} onOpenChange={(open) => !open && setBandeToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer la bande</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer la bande {bandeToDelete?.numero_bande} ? Cette
+              action supprimera également tous les bâtiments, semaines, le suivi quotidien et les
+              maladies associées.
+              <br />
+              <br />
+              Pour confirmer, tapez <strong>SUPPRIMER</strong> dans le champ ci-dessous.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Tapez SUPPRIMER pour confirmer"
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeleteConfirmation("");
+                setBandeToDelete(null);
+              }}
+            >
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBande}
+              disabled={deleteConfirmation !== "SUPPRIMER" || isDeleting === bandeToDelete?.id}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {isDeleting === bandeToDelete?.id ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

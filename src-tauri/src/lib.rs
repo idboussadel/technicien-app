@@ -20,7 +20,6 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             // Initialize database
             let app_dir = app.path().app_data_dir().expect("Failed to get app data directory");
@@ -128,10 +127,6 @@ pub fn run() {
             commands::update_suivi_quotidien,
             commands::delete_suivi_quotidien,
             commands::upsert_suivi_quotidien_field,
-            // Updater commands
-            commands::check_for_updates,
-            commands::install_update,
-            commands::get_update_progress,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

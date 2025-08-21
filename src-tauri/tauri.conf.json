@@ -43,15 +43,5 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
-  },
-  "plugins": {
-    "updater": {
-      "active": true,
-      "endpoints": [
-        "https://raw.githubusercontent.com/idboussadel/technicien-app/main/latest.json"
-      ],
-      "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJDQTEzOTcyQjE5M0VENzUKUldSMTdaT3hjam1oTElDK2RZMFExNWUvVncxbUxhYWhDaTBueDBYVDhJWDkzSmhBN2xDc3Y0Q0wK"
-    }
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Check, Search, User, LogOut, Slash, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import WindowControls from "@/components/ui/window-controls";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAutoUpdate } from "@/hooks/useAutoUpdate";
 import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
 
 interface NavItem {
@@ -62,7 +61,6 @@ export default function Header({
   const navRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const { user, logout } = useAuth();
-  const {} = useAutoUpdate();
 
   const handleSignOut = async () => {
     await logout();
@@ -160,7 +158,9 @@ export default function Header({
                   <DropdownMenuTrigger asChild>
                     <button className="flex cursor-pointer items-center space-x-2 px-3 py-2 hover:bg-muted text-foreground rounded-md transition-colors group min-w-0 max-w-64">
                       <span className="font-medium whitespace-nowrap overflow-hidden text-ellipsis">
-                        {selectedBande ? `Bande ${selectedBande.id}` : "Sélectionner une bande"}
+                        {selectedBande
+                          ? `Bande ${selectedBande.numero_bande}`
+                          : "Sélectionner une bande"}
                       </span>
                       <ChevronsUpDown className="w-3 h-3 flex-shrink-0" />
                     </button>
@@ -177,11 +177,11 @@ export default function Header({
                           <div className="flex items-center space-x-2">
                             <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
                               <span className="text-xs font-medium text-blue-600">
-                                {selectedBande.id}
+                                {selectedBande.numero_bande}
                               </span>
                             </div>
                             <span className="font-medium text-foreground">
-                              Bande {selectedBande.id} -{" "}
+                              Bande {selectedBande.numero_bande} -{" "}
                               {new Date(selectedBande.date_entree).toLocaleDateString("fr-FR")}
                             </span>
                           </div>
@@ -199,10 +199,12 @@ export default function Header({
                       >
                         <div className="flex items-center space-x-2">
                           <div className="w-5 h-5 rounded bg-blue-100 flex items-center justify-center">
-                            <span className="text-xs font-medium text-blue-600">{bande.id}</span>
+                            <span className="text-xs font-medium text-blue-600">
+                              {bande.numero_bande}
+                            </span>
                           </div>
                           <span className="font-medium text-foreground">
-                            Bande {bande.id} -{" "}
+                            Bande {bande.numero_bande} -{" "}
                             {new Date(bande.date_entree).toLocaleDateString("fr-FR")}
                           </span>
                         </div>

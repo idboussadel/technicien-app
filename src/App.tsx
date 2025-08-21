@@ -12,7 +12,6 @@ import Medicaments from "./pages/medicaments/Medicaments";
 import Maladies from "./pages/maladies/Maladies";
 import ProfilePage from "./pages/profile/ProfilePage";
 
-import { UpdateNotification } from "./components/UpdateNotification";
 import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
 import "./App.css";
 
@@ -148,16 +147,18 @@ function AuthenticatedApp() {
     setCurrentView("ferme"); // Back to ferme view
   };
 
-  const handleBandeChange = (bande: BandeWithDetails) => {
+  const handleBandeChange = (bande: BandeWithDetails | null) => {
     setSelectedBande(bande);
     setSelectedBatiment(null); // Reset batiment when bande changes
 
     // Load batiments for the selected bande
-    if (bande.id) {
+    if (bande?.id) {
       loadBatiments(bande.id);
     }
 
-    setCurrentView("batiment"); // When a bande is selected, we go to batiment view
+    // If bande is null, we're going back to bande view
+    // If bande exists, we go to batiment view
+    setCurrentView(bande ? "batiment" : "bande");
   };
 
   const handleBackToBandes = () => {
@@ -248,9 +249,6 @@ function AuthenticatedApp() {
           <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </main>
-
-      {/* Update notification - shows automatically when updates are available */}
-      <UpdateNotification />
     </div>
   );
 }

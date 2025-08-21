@@ -3,7 +3,6 @@ import {
   Plus,
   Building2,
   MoreHorizontal,
-  Edit,
   Trash2,
   Users,
   Home,
@@ -16,11 +15,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Ferme, BandeWithDetails, BatimentWithDetails } from "@/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Ferme, BandeWithDetails, BatimentWithDetails, Personnel, Poussin } from "@/types";
 import { AlimentationHistoryList } from "@/pages/fermes/bandes/alimentation/alimentation-history-list";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SemainesView from "./semaines/semaines";
-// (UI d'ajout de maladie déplacée vers la page Semaines)
+import CreateBatimentModal from "./create-batiment-modal";
+import { invoke } from "@tauri-apps/api/core";
+import toast from "react-hot-toast";
 
 interface BatimentsViewProps {
   bande: BandeWithDetails;
@@ -31,6 +43,10 @@ interface BatimentsViewProps {
   onBatimentSelect?: (batiment: BatimentWithDetails) => void;
   onBackToBatiments?: () => void;
   currentView?: "ferme" | "bande" | "batiment" | "semaine";
+  onRefreshBande?: () => void;
+  personnel?: Personnel[];
+  poussins?: Poussin[];
+  availableBatiments?: string[];
 }
 
 export default function BatimentsView({
@@ -41,6 +57,10 @@ export default function BatimentsView({
   onBatimentSelect,
   onBackToBatiments,
   currentView: parentCurrentView,
+  onRefreshBande,
+  personnel = [],
+  poussins = [],
+  availableBatiments = [],
 }: BatimentsViewProps) {
   const [selectedBatiment, setSelectedBatiment] = useState<BatimentWithDetails | null>(
     parentSelectedBatiment || null
@@ -48,22 +68,91 @@ export default function BatimentsView({
   const [currentView, setCurrentView] = useState<"batiments" | "semaines">(
     parentSelectedBatiment && parentCurrentView === "semaine" ? "semaines" : "batiments"
   );
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [batimentToDelete, setBatimentToDelete] = useState<BatimentWithDetails | null>(null);
+  const [isCreateBatimentModalOpen, setIsCreateBatimentModalOpen] = useState(false);
+  const [localPersonnel, setLocalPersonnel] = useState<Personnel[]>(personnel);
+  const [localPoussins, setLocalPoussins] = useState<Poussin[]>(poussins);
 
-  const handleCreateBatiment = () => {
-    // TODO: Implement create batiment functionality
-    console.log("Create new batiment");
+  // Update local state when props change
+  useEffect(() => {
+    setLocalPersonnel(personnel);
+  }, [personnel]);
+
+  useEffect(() => {
+    setLocalPoussins(poussins);
+  }, [poussins]);
+
+  const handleCreateBatiment = async () => {
+    // Load personnel and poussins data before opening the modal
+    try {
+      if (localPersonnel.length === 0) {
+        const personnelResult = await invoke<Personnel[]>("get_personnel_list");
+        setLocalPersonnel(personnelResult);
+      }
+      if (localPoussins.length === 0) {
+        const poussinsResult = await invoke<Poussin[]>("get_poussin_list");
+        setLocalPoussins(poussinsResult);
+      }
+    } catch (error) {
+      console.error("Error loading data for create batiment modal:", error);
+      toast.error("Erreur lors du chargement des données");
+      return;
+    }
+
+    setIsCreateBatimentModalOpen(true);
   };
 
-  const handleEditBatiment = (batimentId: number | null) => {
-    // TODO: Implement edit batiment functionality
-    console.log("Edit batiment:", batimentId);
+  const handleBatimentCreated = () => {
+    // Refresh the bande data to show the new batiment
+    onRefreshBande?.();
   };
 
-  // (handlers ajout maladie supprimés ici)
+  const handleDeleteBatiment = async () => {
+    if (!batimentToDelete?.id) {
+      toast.error("ID du bâtiment invalide");
+      return;
+    }
 
-  const handleDeleteBatiment = (batimentId: number | null) => {
-    // TODO: Implement delete batiment functionality
-    console.log("Delete batiment:", batimentId);
+    if (deleteConfirmation !== "SUPPRIMER") {
+      toast.error("Veuillez taper 'SUPPRIMER' pour confirmer la suppression");
+      return;
+    }
+
+    setIsDeleting(batimentToDelete.id);
+
+    try {
+      await invoke("delete_batiment", { id: batimentToDelete.id });
+
+      toast.success("Bâtiment supprimé avec succès");
+
+      // Reset the delete state first
+      setDeleteConfirmation("");
+      setBatimentToDelete(null);
+
+      // Small delay to ensure the database operation is complete
+      setTimeout(() => {
+        // Refresh the bande data to reflect the changes
+        onRefreshBande?.();
+      }, 200);
+    } catch (error) {
+      console.error("Erreur lors de la suppression du bâtiment:", error);
+
+      // Check if the error indicates the batiment doesn't exist
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("not found") || errorMessage.includes("n'existe pas")) {
+        toast.error("Ce bâtiment n'existe plus. Actualisation des données...");
+        // Automatically refresh the data
+        setTimeout(() => {
+          onRefreshBande?.();
+        }, 1000);
+      } else {
+        toast.error("Erreur lors de la suppression du bâtiment");
+      }
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
   const handleBatimentClick = (batiment: BatimentWithDetails) => {
@@ -100,6 +189,10 @@ export default function BatimentsView({
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour aux bandes
             </Button>
+            <Button onClick={handleCreateBatiment}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nouveau bâtiment
+            </Button>
           </div>
 
           {/* Alimentation Section */}
@@ -111,15 +204,9 @@ export default function BatimentsView({
                 <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
                 <h3 className="text-xl font-semibold mb-2 text-foreground">Aucun bâtiment</h3>
                 <p className="text-muted-foreground text-center mb-6 max-w-md">
-                  Cette bande n'a pas encore de bâtiments. Créez le premier bâtiment pour commencer.
+                  Cette bande n'a pas encore de bâtiments. Utilisez le bouton "Nouveau bâtiment"
+                  pour commencer.
                 </p>
-                <Button
-                  onClick={handleCreateBatiment}
-                  className="bg-foreground hover:bg-foreground/90"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Créer le premier bâtiment
-                </Button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -171,19 +258,17 @@ export default function BatimentsView({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-40">
                           <DropdownMenuItem
-                            onClick={() => handleEditBatiment(batiment.id)}
-                            className="cursor-pointer"
-                          >
-                            <Edit className="w-4 h-4 mr-2" />
-                            Modifier
-                          </DropdownMenuItem>
-
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteBatiment(batiment.id)}
                             className="cursor-pointer text-destructive focus:text-destructive"
+                            disabled={isDeleting === batiment.id}
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setBatimentToDelete(batiment);
+                              setDeleteConfirmation("");
+                            }}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Supprimer
+                            {isDeleting === batiment.id ? "Suppression..." : "Supprimer"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -195,6 +280,63 @@ export default function BatimentsView({
           </main>
         </div>
       </main>
+
+      {/* Delete Confirmation Dialog - Moved outside the card structure */}
+      <AlertDialog
+        open={!!batimentToDelete}
+        onOpenChange={(open) => !open && setBatimentToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer le bâtiment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Êtes-vous sûr de vouloir supprimer le bâtiment {batimentToDelete?.numero_batiment} ?
+              Cette action supprimera également toutes les semaines, le suivi quotidien et les
+              maladies associées.
+              <br />
+              <br />
+              Pour confirmer, tapez <strong>SUPPRIMER</strong> dans le champ ci-dessous.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="Tapez SUPPRIMER pour confirmer"
+              value={deleteConfirmation}
+              onChange={(e) => setDeleteConfirmation(e.target.value)}
+              className="w-full"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setDeleteConfirmation("");
+                setBatimentToDelete(null);
+              }}
+            >
+              Annuler
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteBatiment}
+              disabled={deleteConfirmation !== "SUPPRIMER" || isDeleting === batimentToDelete?.id}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {isDeleting === batimentToDelete?.id ? "Suppression..." : "Supprimer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Batiment Modal */}
+      <CreateBatimentModal
+        isOpen={isCreateBatimentModalOpen}
+        onClose={() => setIsCreateBatimentModalOpen(false)}
+        bande={bande}
+        ferme={ferme}
+        personnel={localPersonnel}
+        poussins={localPoussins}
+        availableBatiments={availableBatiments}
+        onBatimentCreated={handleBatimentCreated}
+      />
     </div>
   );
 }

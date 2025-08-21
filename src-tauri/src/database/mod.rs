@@ -52,7 +52,12 @@ impl DatabaseManager {
     /// # Returns
     /// Une connexion SQLite prête à être utilisée
     pub fn get_connection(&self) -> AppResult<r2d2::PooledConnection<SqliteConnectionManager>> {
-        self.pool.get().map_err(AppError::from)
+        let conn = self.pool.get().map_err(AppError::from)?;
+        
+        // Ensure foreign key constraints are enabled for this connection
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
+        
+        Ok(conn)
     }
 
     /// Initialise le schéma de base de données
@@ -61,6 +66,9 @@ impl DatabaseManager {
     /// si elles n'existent pas déjà.
     pub fn initialize_schema(&self) -> AppResult<()> {
         let conn = self.get_connection()?;
+        
+        // Enable foreign key constraints for SQLite
+        conn.execute("PRAGMA foreign_keys = ON", [])?;
         
         // Création de la table users (pour l'authentification)
         conn.execute(

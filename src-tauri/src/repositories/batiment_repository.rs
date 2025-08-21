@@ -224,13 +224,53 @@ impl BatimentRepository {
         Ok(())
     }
 
-    /// Delete a batiment
+    /// Delete a batiment with cascade deletion of all associated data
+    /// 
+    /// This function manually deletes all associated data in the correct order:
+    /// 1. suivi_quotidien (through semaines)
+    /// 2. semaines
+    /// 3. batiment_maladies
+    /// 4. batiments
     pub fn delete(
-        conn: &PooledConnection<SqliteConnectionManager>,
+        conn: &mut PooledConnection<SqliteConnectionManager>,
         id: i64,
     ) -> Result<(), AppError> {
-        // La suppression en cascade est gérée par les contraintes FK
-        let rows_affected = conn.execute(
+        // Start a transaction to ensure data consistency
+        let tx = conn.transaction()?;
+        
+        // 1. Delete all suivi_quotidien records associated with this batiment's semaines
+        let semaine_ids: Vec<i64> = tx.prepare(
+            "SELECT id FROM semaines WHERE batiment_id = ?1"
+        )?
+        .query_map([id], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+        
+        if !semaine_ids.is_empty() {
+            let placeholders = std::iter::repeat("?")
+                .take(semaine_ids.len())
+                .collect::<Vec<_>>()
+                .join(",");
+            
+            tx.execute(
+                &format!("DELETE FROM suivi_quotidien WHERE semaine_id IN ({})", placeholders),
+                rusqlite::params_from_iter(semaine_ids.iter()),
+            )?;
+        }
+        
+        // 2. Delete all semaines for this batiment
+        tx.execute(
+            "DELETE FROM semaines WHERE batiment_id = ?1",
+            [id],
+        )?;
+        
+        // 3. Delete all maladie associations for this batiment
+        tx.execute(
+            "DELETE FROM batiment_maladies WHERE batiment_id = ?1",
+            [id],
+        )?;
+        
+        // 4. Finally delete the batiment itself
+        let rows_affected = tx.execute(
             "DELETE FROM batiments WHERE id = ?1",
             [id],
         )?;
@@ -238,6 +278,9 @@ impl BatimentRepository {
         if rows_affected == 0 {
             return Err(AppError::not_found("Batiment", id));
         }
+        
+        // Commit the transaction
+        tx.commit()?;
 
         Ok(())
     }

@@ -9,7 +9,6 @@
     "core:window:allow-minimize",
     "core:window:allow-maximize",
     "core:window:allow-close",
-    "core:window:allow-toggle-maximize",
-    "updater:default"
+    "core:window:allow-toggle-maximize"
   ]
 }

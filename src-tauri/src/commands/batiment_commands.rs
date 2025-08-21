@@ -79,9 +79,9 @@ pub async fn delete_batiment(
     db: State<'_, Arc<DatabaseManager>>,
     id: i64,
 ) -> Result<(), String> {
-    let conn = db.get_connection().map_err(|e| e.to_string())?;
+    let mut conn = db.get_connection().map_err(|e| e.to_string())?;
     
-    BatimentRepository::delete(&conn, id)
+    BatimentRepository::delete(&mut conn, id)
         .map_err(|e| e.to_string())
 }
 

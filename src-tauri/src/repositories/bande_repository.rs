@@ -493,13 +493,66 @@ impl BandeRepository {
         Ok(())
     }
 
-    /// Delete a bande (will cascade delete batiments)
+    /// Delete a bande with cascade deletion of all associated data
+    /// 
+    /// This function manually deletes all associated data in the correct order:
+    /// 1. suivi_quotidien (through batiments -> semaines)
+    /// 2. semaines (through batiments)
+    /// 3. batiment_maladies (through batiments)
+    /// 4. batiments
+    /// 5. bandes
     pub fn delete(
-        conn: &PooledConnection<SqliteConnectionManager>,
+        conn: &mut PooledConnection<SqliteConnectionManager>,
         id: i64,
     ) -> Result<(), AppError> {
-        // La suppression en cascade est gérée par les contraintes FK
-        let rows_affected = conn.execute(
+        // Start a transaction to ensure data consistency
+        let tx = conn.transaction()?;
+        
+        // 1. Delete all suivi_quotidien records associated with this bande's batiments
+        let semaine_ids: Vec<i64> = tx.prepare(
+            "SELECT s.id FROM semaines s
+             JOIN batiments b ON s.batiment_id = b.id
+             WHERE b.bande_id = ?1"
+        )?
+        .query_map([id], |row| row.get(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+        
+        if !semaine_ids.is_empty() {
+            let placeholders = std::iter::repeat("?")
+                .take(semaine_ids.len())
+                .collect::<Vec<_>>()
+                .join(",");
+            
+            tx.execute(
+                &format!("DELETE FROM suivi_quotidien WHERE semaine_id IN ({})", placeholders),
+                rusqlite::params_from_iter(semaine_ids.iter()),
+            )?;
+        }
+        
+        // 2. Delete all semaines for this bande's batiments
+        tx.execute(
+            "DELETE FROM semaines WHERE batiment_id IN (
+                SELECT id FROM batiments WHERE bande_id = ?1
+            )",
+            [id],
+        )?;
+        
+        // 3. Delete all maladie associations for this bande's batiments
+        tx.execute(
+            "DELETE FROM batiment_maladies WHERE batiment_id IN (
+                SELECT id FROM batiments WHERE bande_id = ?1
+            )",
+            [id],
+        )?;
+        
+        // 4. Delete all batiments for this bande
+        tx.execute(
+            "DELETE FROM batiments WHERE bande_id = ?1",
+            [id],
+        )?;
+        
+        // 5. Finally delete the bande itself
+        let rows_affected = tx.execute(
             "DELETE FROM bandes WHERE id = ?1",
             [id],
         )?;
@@ -507,6 +560,9 @@ impl BandeRepository {
         if rows_affected == 0 {
             return Err(AppError::not_found("Bande", id));
         }
+        
+        // Commit the transaction
+        tx.commit()?;
 
         Ok(())
     }
