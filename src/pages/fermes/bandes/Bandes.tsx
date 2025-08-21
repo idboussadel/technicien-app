@@ -392,22 +392,39 @@ export default function Bandes({
             ) : (
               <div className="space-y-3">
                 {/* Bande Cards - New Design */}
-                {bandes.map((bande) => (
+                {bandes.map((bande, index) => (
                   <div
                     key={bande.id}
-                    className="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-gray-800 dark:bg-gray-900 cursor-pointer"
+                    className={`flex items-center justify-between rounded-lg border p-4 shadow-sm transition-shadow hover:shadow-md cursor-pointer ${
+                      index === 0
+                        ? "border-yellow-500 bg-yellow-50 dark:border-yellow-700 dark:bg-yellow-950/30"
+                        : "border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+                    }`}
                     onClick={() => handleBandeSelect(bande)}
                   >
                     <div className="flex items-center gap-4">
                       <div className="flex-shrink-0">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 font-semibold text-base">
+                        <span
+                          className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold text-base ${
+                            index === 0
+                              ? "bg-yellow-100 border border-yellow-600 text-yellow-600 dark:bg-yellow-900/50 dark:text-yellow-400"
+                              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                          }`}
+                        >
                           {bande.numero_bande}
                         </span>
                       </div>
                       <div className="flex flex-col">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-                          Bande #{bande.numero_bande}
-                        </h3>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+                            Bande #{bande.numero_bande}
+                          </h3>
+                          {index === 0 && (
+                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 border border-yellow-600 dark:border-yellow-800">
+                              En cours
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-1 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <CalendarDays className="h-4 w-4 text-gray-400 dark:text-gray-500" />

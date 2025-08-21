@@ -151,7 +151,7 @@ export function AlimentationHistoryList({
         </div>
         <div className="flex gap-2">
           {showAddButton && (
-            <Button onClick={() => setIsModalOpen(true)} size="sm">
+            <Button onClick={() => setIsModalOpen(true)} variant="outline">
               <Plus className="mr-2 h-4 w-4" />
               Ajouter alimentation
             </Button>

@@ -58,8 +58,8 @@ export default function LoginPage({ onLogin, onSwitchToRegister }: LoginPageProp
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "ferme",
-      password: "123456789",
+      username: "",
+      password: "",
     },
   });
 
@@ -115,13 +115,14 @@ export default function LoginPage({ onLogin, onSwitchToRegister }: LoginPageProp
                           {...field}
                           disabled={isSubmitting}
                           autoComplete="off"
+                          autoFocus
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField  
+                <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
