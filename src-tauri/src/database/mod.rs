@@ -98,7 +98,7 @@ impl DatabaseManager {
             "CREATE TABLE IF NOT EXISTS personnel (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nom TEXT NOT NULL UNIQUE,
-                telephone TEXT UNIQUE,
+                telephone TEXT,
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             )",
             [],

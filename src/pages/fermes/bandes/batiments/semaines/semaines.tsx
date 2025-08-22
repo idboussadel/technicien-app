@@ -575,7 +575,11 @@ export default function SemainesView({
   const openMaladieModal = async () => {
     try {
       const list = await invoke<Maladie[]>("get_maladies_list");
-      setMaladies(Array.isArray(list) ? list : []);
+      // Filter out maladies already assigned to this bâtiment
+      const availableMaladies = Array.isArray(list)
+        ? list.filter((maladie) => !batimentMaladies.some((bm) => bm.id === maladie.id))
+        : [];
+      setMaladies(availableMaladies);
       setIsMaladieModalOpen(true);
     } catch (e) {
       console.error(e);
@@ -615,14 +619,10 @@ export default function SemainesView({
       setIsMaladieModalOpen(false);
       setSelectedMaladieIds([]);
       setApplyToSameBande(false);
-      // Refresh maladies row
-      try {
-        const assigned = await invoke<Maladie[]>("get_maladies_by_batiment", {
-          batimentId: batiment.id,
-        });
-        setBatimentMaladies(Array.isArray(assigned) ? assigned : []);
-      } catch (e) {
-        console.error(e);
+
+      // Refresh main data to show new maladies immediately
+      if (batiment.id) {
+        await loadSemaines(batiment.id);
       }
     } catch (e) {
       console.error(e);
@@ -2843,22 +2843,19 @@ export default function SemainesView({
           <DialogHeader>
             <DialogTitle>Ajouter des maladies</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
+          <div className="space-y-4 w-full">
+            <div className="space-y-2 w-full">
               <Label>Maladies</Label>
               <Popover open={maladieComboboxOpen} onOpenChange={setMaladieComboboxOpen}>
                 <PopoverTrigger>
-                  <Button variant="outline" role="combobox" className="w-full justify-between">
+                  <Button variant="outline" role="combobox" className="w-[29rem] justify-between">
                     {selectedMaladieIds.length > 0
                       ? `${selectedMaladieIds.length} sélectionnée(s)`
                       : "Choisir des maladies..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent
-                  className="w-[min(560px,calc(100vw-4rem))] max-w-none p-0"
-                  align="start"
-                >
+                <PopoverContent className="w-[29rem] max-w-none p-0" align="start">
                   <Command>
                     <CommandInput placeholder="Rechercher une maladie..." />
                     <CommandList>

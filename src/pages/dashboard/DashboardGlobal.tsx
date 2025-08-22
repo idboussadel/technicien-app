@@ -101,7 +101,6 @@ export default function DashboardGlobal({ fermes }: DashboardGlobalProps) {
     <div className="p-6 space-y-6 min-h-screen bg-gray-50">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard Global</h1>
-        <h2>eazeazeazeazeaze</h2>
         <p className="text-muted-foreground">
           Vue d'ensemble de toutes les fermes - Année {new Date().getFullYear()}
         </p>
@@ -253,7 +252,7 @@ export default function DashboardGlobal({ fermes }: DashboardGlobalProps) {
 
                           <div className="text-xs self-center font-medium mt-1 text-red-600">
                             <span className="flex items-center gap-1">
-                              Alimentation: {alimentationContour.toLocaleString()} &lt; 10000
+                              Alimentation: {alimentationContour.toLocaleString("fr-FR")} kg
                             </span>
                           </div>
                         </div>
