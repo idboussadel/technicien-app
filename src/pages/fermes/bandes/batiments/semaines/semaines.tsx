@@ -534,6 +534,7 @@ export default function SemainesView({
       if (newNotes !== currentNotes) {
         const updateData = {
           id: bande.id,
+          numero_bande: bande.numero_bande,
           date_entree: bande.date_entree,
           ferme_id: bande.ferme_id,
           notes: newNotes,
@@ -2536,7 +2537,9 @@ export default function SemainesView({
                                   ) : (
                                     <Input
                                       type={
-                                        field.includes("deces") || field.includes("alimentation")
+                                        field.includes("deces") ||
+                                        field.includes("alimentation") ||
+                                        field === "soins_quantite"
                                           ? "number"
                                           : "text"
                                       }
@@ -2689,7 +2692,7 @@ export default function SemainesView({
                       Pourcentage de Mortalité
                     </TableHead>
                     <TableHead className="text-center text-slate-700 dark:text-slate-300 border-b border-slate-400/50">
-                      Notes
+                      Remarques globale
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -2816,7 +2819,6 @@ export default function SemainesView({
                           className="w-full h-full border-none focus:outline-none focus:ring-0 text-center bg-white dark:bg-white rounded-none px-4 py-2 m-0"
                           style={{ boxShadow: "none" }}
                           autoFocus
-                          placeholder="Ajouter des notes..."
                         />
                       ) : (
                         <div

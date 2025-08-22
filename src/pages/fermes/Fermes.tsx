@@ -68,9 +68,14 @@ const createFermeSchema = z.object({
     .max(100, "Le nom ne peut pas dépasser 100 caractères")
     .trim(),
   nbr_meuble: z
-    .number()
-    .int("Le nombre de meubles doit être un entier")
-    .min(0, "Le nombre de meubles ne peut pas être négatif"),
+    .string()
+    .min(1, "Le nombre de bâtiments est obligatoire")
+    .refine((val) => !isNaN(Number(val)) && Number(val) >= 0, {
+      message: "Le nombre de bâtiments doit être un nombre positif ou zéro",
+    })
+    .refine((val) => Number.isInteger(Number(val)), {
+      message: "Le nombre de bâtiments doit être un entier",
+    }),
 });
 
 type CreateFermeForm = z.infer<typeof createFermeSchema>;
@@ -111,7 +116,7 @@ export default function Fermes({
     resolver: zodResolver(createFermeSchema),
     defaultValues: {
       nom: "",
-      nbr_meuble: 0,
+      nbr_meuble: "",
     },
   });
 
@@ -120,7 +125,7 @@ export default function Fermes({
     resolver: zodResolver(createFermeSchema),
     defaultValues: {
       nom: "",
-      nbr_meuble: 0,
+      nbr_meuble: "",
     },
   });
 
@@ -148,7 +153,7 @@ export default function Fermes({
       setIsFormSubmitting(true);
       const createData: CreateFerme = {
         nom: data.nom,
-        nbr_meuble: data.nbr_meuble,
+        nbr_meuble: parseInt(data.nbr_meuble) || 0,
       };
 
       await invoke("create_ferme", { ferme: createData });
@@ -174,7 +179,7 @@ export default function Fermes({
   const handleModifier = (ferme: Ferme) => {
     setEditingFerme(ferme);
     editForm.setValue("nom", ferme.nom);
-    editForm.setValue("nbr_meuble", ferme.nbr_meuble);
+    editForm.setValue("nbr_meuble", ferme.nbr_meuble.toString());
     setIsEditDialogOpen(true);
   };
 
@@ -189,7 +194,7 @@ export default function Fermes({
       const updateData: UpdateFerme = {
         id: editingFerme.id,
         nom: data.nom,
-        nbr_meuble: data.nbr_meuble,
+        nbr_meuble: parseInt(data.nbr_meuble) || 0,
       };
 
       await invoke("update_ferme", { ferme: updateData });
@@ -299,7 +304,7 @@ export default function Fermes({
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Ex: Ferme de la Vallée"
+                            placeholder="Ex: Izwika"
                             autoComplete="off"
                             {...field}
                             disabled={isFormSubmitting}
@@ -322,8 +327,6 @@ export default function Fermes({
                             type="number"
                             placeholder="Entrez le nombre de bâtiments"
                             {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            value={field.value === 0 ? "" : field.value}
                             disabled={isFormSubmitting}
                             min="0"
                           />
@@ -435,20 +438,20 @@ export default function Fermes({
                         <div className="absolute inset-0 flex items-center justify-center">
                           {/* Dropdown Menu */}
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                            <DropdownMenuTrigger>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="absolute top-2 right-2 text-white/70 hover:text-white hover:bg-white/10 h-6 w-6 p-0 z-10"
+                                className="absolute top-13 right-3 text-white/90 hover:text-white hover:bg-white/20 h-8 w-8 p-0 z-20"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                 }}
                               >
-                                <MoreHorizontal className="w-4 h-4" />
+                                <MoreHorizontal className="w-5 h-5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuContent align="start" className="w-40" sideOffset={4}>
                               <DropdownMenuItem
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -557,8 +560,6 @@ export default function Fermes({
                             type="number"
                             placeholder="Entrez le nombre de meubles"
                             {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                            value={field.value === 0 ? "" : field.value}
                             disabled={isEditSubmitting}
                             min="0"
                           />

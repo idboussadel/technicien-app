@@ -36,7 +36,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
 import { Personnel, CreateBatiment, Poussin, BandeWithDetails, Ferme } from "@/types";
@@ -72,7 +72,6 @@ export default function CreateBatimentModal({
   ferme,
   personnel = [],
   poussins = [],
-  availableBatiments = [],
   onBatimentCreated,
 }: CreateBatimentModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);

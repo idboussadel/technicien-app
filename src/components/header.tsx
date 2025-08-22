@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Check, Search, User, LogOut, Slash, ChevronsUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";

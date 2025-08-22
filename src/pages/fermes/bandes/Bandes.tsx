@@ -441,7 +441,7 @@ export default function Bandes({
                           </div>
                           {bande.notes && (
                             <div className="max-w-xs truncate">
-                              <span>Notes: {bande.notes}</span>
+                              <span>Remarques: {bande.notes}</span>
                             </div>
                           )}
                         </div>
