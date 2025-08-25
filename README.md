@@ -1,5 +1,6 @@
-<div align="center">
 # GEEMA - Technicien App
+
+<div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue.svg)](https://tauri.app/)
@@ -53,7 +54,7 @@ Le cœur de l'application est le tableau de suivi hebdomadaire qui affiche les d
 
 **Structure du tableau :**
 
-````
+<img width="1919" height="1024" alt="image" src="https://github.com/user-attachments/assets/2472e3a7-f025-4457-8eb1-b8d8556e812e" />
 
 **Structure des headers fusionnés :**
 
