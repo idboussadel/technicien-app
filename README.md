@@ -1,4 +1,6 @@
-# 🚜 GEEMA - Gestion Électronique des Élevages et de la Maintenance Avicole
+# 🚜 GEEMA - Technicien App
+
+<div align="center">
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue.svg)](https://tauri.app/)
@@ -6,13 +8,11 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-blue.svg)](https://www.sqlite.org/)
 
+</div>
+
 > **GEEMA** est une application desktop moderne et performante pour la gestion complète des élevages avicoles, construite avec Tauri, React et SQLite.
 
-## 🌟 Vue d'Ensemble
-
-GEEMA est une solution complète de gestion d'élevage qui permet aux techniciens agricoles de suivre chaque aspect de leurs bandes de poussins, de la création de la ferme jusqu'au suivi quotidien détaillé. L'application est conçue pour gérer des années de données sans perte de performance grâce à une architecture optimisée et une base de données SQLite bien structurée.
-
-## 🏗️ Architecture Technique
+## Architecture Technique
 
 ### Backend Rust avec Tauri 2.0
 
@@ -36,7 +36,7 @@ L'interface utilisateur est construite avec React 18.3 et TypeScript 5.6, utilis
 - **Système de navigation** avec React Router
 - **Gestion d'état** avec hooks React personnalisés
 
-## 📊 Structure de Gestion Hebdomadaire
+## Structure de Gestion Hebdomadaire
 
 ### Organisation des Données
 
@@ -54,7 +54,7 @@ Le cœur de l'application est le tableau de suivi hebdomadaire qui affiche les d
 
 **Structure du tableau :**
 
-```
+````
 Semaine 1
 ┌─────┬─────────────┬─────────────┬──────────────┬─────────────┬─────────────────┬─────────────┬─────────────┬──────────┬──────────┐
 │Jour │    Date     │ Décès       │ Alimentation │   Soins    │   Analyses      │ Remarques   │             │          │          │
@@ -64,17 +64,17 @@ Semaine 1
 │  2  │  02/01/2024 │  30  │  70  │  40  │   80  │      │     │             │             │             │          │          │
 │  3  │  03/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
 │  4  │  04/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-│  5  │  05/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-│  6  │  06/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-│  7  │  07/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-└─────┴─────────────┴──────┴──────┴──────┴───────┴──────┴─────┴─────────────┴─────────────┴─────────────┴──────────┴──────────┘
-                                                                                                                          │
-                                                                                                                          ▼
-                                                                                                                    ┌─────────────┐
-                                                                                                                    │    Poids    │
-                                                                                                                    │    45g      │
-                                                                                                                    └─────────────┘
-```
+    │  5  │  05/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
+    │  6  │  06/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
+    │  7  │  07/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
+    └─────┴─────────────┴──────┴──────┴──────┴───────┴──────┴─────┴─────────────┴─────────────┴─────────────┴──────────┴──────────┘
+                                                                                                                            │
+                                                                                                                            ▼
+                                                                                                                        ┌─────────────┐
+                                                                                                                        │    Poids    │
+                                                                                                                        │    45g      │
+                                                                                                                        └─────────────┘
+    ```
 
 **Structure des headers fusionnés :**
 
@@ -122,7 +122,7 @@ La base de données SQLite est conçue pour la performance à long terme :
 - **Mode WAL** pour les performances concurrentes
 - **Requêtes optimisées** avec jointures efficaces
 
-## 🔐 Système d'Authentification
+## Système d'Authentification
 
 GEEMA implémente un système d'authentification complet et sécurisé :
 
@@ -228,7 +228,7 @@ npm run dev
 npm run build:win-msi  # Windows
 npm run build:mac      # macOS
 npm run build:linux    # Linux
-```
+````
 
 ### Configuration de Développement
 
