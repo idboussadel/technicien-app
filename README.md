@@ -1,6 +1,5 @@
-# 🚜 GEEMA - Technicien App
-
 <div align="center">
+# GEEMA - Technicien App
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-blue.svg)](https://tauri.app/)
@@ -55,26 +54,6 @@ Le cœur de l'application est le tableau de suivi hebdomadaire qui affiche les d
 **Structure du tableau :**
 
 ````
-Semaine 1
-┌─────┬─────────────┬─────────────┬──────────────┬─────────────┬─────────────────┬─────────────┬─────────────┬──────────┬──────────┐
-│Jour │    Date     │ Décès       │ Alimentation │   Soins    │   Analyses      │ Remarques   │             │          │          │
-│     │             │ Jour │Total │ Jour │ Total │Trait.│Qte  │             │             │             │          │          │
-├─────┼─────────────┼──────┼──────┼──────┼───────┼──────┼─────┼─────────────┼─────────────┼─────────────┼──────────┼──────────┤
-│  1  │  01/01/2024 │  40  │  40  │  40  │   40  │Roxas.│ 5L  │             │             │             │          │          │
-│  2  │  02/01/2024 │  30  │  70  │  40  │   80  │      │     │             │             │             │          │          │
-│  3  │  03/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-│  4  │  04/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-    │  5  │  05/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-    │  6  │  06/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-    │  7  │  07/01/2024 │      │      │      │       │      │     │             │             │             │          │          │
-    └─────┴─────────────┴──────┴──────┴──────┴───────┴──────┴─────┴─────────────┴─────────────┴─────────────┴──────────┴──────────┘
-                                                                                                                            │
-                                                                                                                            ▼
-                                                                                                                        ┌─────────────┐
-                                                                                                                        │    Poids    │
-                                                                                                                        │    45g      │
-                                                                                                                        └─────────────┘
-    ```
 
 **Structure des headers fusionnés :**
 
@@ -181,7 +160,7 @@ Gestion complète de la nutrition :
 - Suivi des quantités par jour et totales
 - Export des données pour analyse
 
-## 🎨 Interface Utilisateur
+## Interface Utilisateur
 
 ### Design System
 
@@ -203,7 +182,7 @@ GEEMA utilise shadcn/ui comme fondation avec Tailwind CSS :
 - Notifications toast pour les actions utilisateur
 - États de chargement et gestion d'erreurs
 
-## 🚀 Installation et Démarrage
+## Installation et Démarrage
 
 ### Prérequis Système
 
@@ -288,7 +267,7 @@ src/                 # Frontend React
 - Validation des schémas avec Zod
 - Gestion d'erreurs robuste
 
-## 📊 Cas d'Usage Réels
+## Cas d'Usage Réels
 
 ### Workflow Typique d'Élevage
 
@@ -309,11 +288,7 @@ src/                 # Frontend React
 - Semaine 1 : Poids moyen de 45g enregistré
 - Progression séquentielle validée automatiquement
 
-## 🌍 Support Multilingue
-
-GEEMA supporte actuellement le français comme langue principale, avec des éléments d'interface en arabe pour certains rapports PDF. L'architecture permet une extension facile vers d'autres langues.
-
-## 📈 Performance et Scalabilité
+## Performance et Scalabilité
 
 ### Optimisations Implémentées
 
