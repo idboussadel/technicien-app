@@ -1,4 +1,5 @@
 # GEEMA - Technicien App
+<img width="1920" height="1080" alt="New Project" src="https://github.com/user-attachments/assets/1a5c25d2-d83b-4858-8197-540f3dc55b54" />
 
 <div align="center">
 
@@ -9,8 +10,6 @@
 [![SQLite](https://img.shields.io/badge/SQLite-3-blue.svg)](https://www.sqlite.org/)
 
 </div>
-
-> **GEEMA** est une application desktop moderne et performante pour la gestion complète des élevages avicoles, construite avec Tauri, React et SQLite.
 
 ## Architecture Technique
 
